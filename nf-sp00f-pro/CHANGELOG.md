@@ -10,11 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Initial project setup
-- Basic Android project structure
-- Modular architecture foundation
-- Material Design 3 theme
-- Basic MainActivity
+- N/A
 
 ### Changed
 - N/A
@@ -30,6 +26,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - N/A
+
+---
+
+## [1.1.0] - 2025-10-20
+
+### Added
+- **mod-main-nfsp00f.kt** - Main module manager
+  - Module initialization and lifecycle management
+  - Device health status monitoring
+  - Inter-module communication coordination
+  - Auto-connection to PN532 Bluetooth device (MAC: 00:14:03:05:5C:CB)
+
+- **mod-device-pn532.kt** - PN532 NFC device adapter
+  - Bluetooth connectivity (SSID: 'PN532')
+  - USB device enumeration and connection
+  - RFCOMM socket management
+  - Data transmission and reception
+  - Bluetooth device discovery
+
+- **mod-device-androidnfc.kt** - Android NFC adapter
+  - NFC adapter access and management
+  - Reader mode with NFC-A/B/F/V support
+  - NDEF message reading
+  - NFC-A transceive operations
+  - Tag discovery callbacks
+
+### Changed
+- **MainActivity.kt** - Added module manager initialization
+  - Module initialization in onCreate()
+  - Proper shutdown in onDestroy()
+  - Full lifecycle management
+
+- **AndroidManifest.xml** - Added device communication permissions
+  - Bluetooth permissions (BLUETOOTH, BLUETOOTH_ADMIN, BLUETOOTH_SCAN, BLUETOOTH_CONNECT)
+  - Location permissions for device discovery
+  - USB permissions
+  - NFC permissions
+  - Feature declarations for optional hardware
+
+### Security
+- Proper exception handling for all Bluetooth/USB/NFC operations
+- IOException and SocketTimeoutException caught and logged
+- Resource cleanup on error (socket.close(), streams.close())
+- Null safety checks for optional hardware
+- Coroutine-based async operations prevent ANR
+
+### Documentation
+- Complete API reference for Bluetooth, USB, NFC
+- Scope analysis and dependency mapping
+- Self-validation with 100% pass rate
+- Consumer verification report
 
 ---
 
