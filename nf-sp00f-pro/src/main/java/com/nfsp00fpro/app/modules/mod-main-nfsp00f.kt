@@ -35,6 +35,7 @@ class ModMainNfsp00f(private val context: Context) {
     // EMV modules
     private var emvParserModule: EmvParser? = null
     private var emvReaderModule: EmvReader? = null
+    private var emvDatabaseModule: EmvDatabase? = null
 
     // Module status
     private var isInitialized = false
@@ -76,6 +77,10 @@ class ModMainNfsp00f(private val context: Context) {
             // Initialize EMV Reader Module
             emvReaderModule = EmvReader(context)
             emvReaderModule?.initialize()
+
+            // Initialize EMV Database Module
+            emvDatabaseModule = EmvDatabase(context)
+            logStatus("✓ EMV Database module initialized")
 
             // Start health monitoring
             startHealthMonitoring()
@@ -191,6 +196,11 @@ class ModMainNfsp00f(private val context: Context) {
     fun getEmvReaderModule(): EmvReader? = emvReaderModule
 
     /**
+     * Get EMV Database module
+     */
+    fun getEmvDatabaseModule(): EmvDatabase? = emvDatabaseModule
+
+    /**
      * Check if all modules are initialized
      */
     fun isInitialized(): Boolean = isInitialized
@@ -203,7 +213,9 @@ class ModMainNfsp00f(private val context: Context) {
             pn532Module?.shutdown()
             androidNfcModule?.shutdown()
             emvReaderModule?.shutdown()
+            emvDatabaseModule?.close()
             emvParserModule = null
+            emvDatabaseModule = null
             isInitialized = false
             logStatus("✓ All modules shut down")
         } catch (e: Exception) {

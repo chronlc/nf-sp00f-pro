@@ -7,7 +7,9 @@ import android.nfc.tech.NfcA
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.io.IOException
+import java.util.UUID
 
 /**
  * EMV Card Reader Module
@@ -40,13 +42,16 @@ class EmvReader(private val context: Context) {
     private var pn532Module: ModDevicePn532? = null
     private var androidNfcModule: ModDeviceAndroidNfc? = null
 
-    // EMV parser
+    // EMV parser and database
     private val parser = EmvParser()
+    private var database: EmvDatabase? = null
 
     // State
     private var isInitialized = false
     private var selectedAid: ByteArray? = null
     private var currentAfl: ByteArray? = null
+    private var currentSessionId: String? = null
+    private var currentAidId: Long = 0L
 
     // Coroutine scope
     private val moduleScope = CoroutineScope(Dispatchers.IO)
@@ -106,6 +111,9 @@ class EmvReader(private val context: Context) {
             pn532Module = mainModule?.getPn532Module()
             androidNfcModule = mainModule?.getAndroidNfcModule()
 
+            // Initialize database
+            database = EmvDatabase(context)
+
             isInitialized = true
             logStatus("✓ EMV reader initialized")
         } catch (e: Exception) {
@@ -138,11 +146,30 @@ class EmvReader(private val context: Context) {
         val cardData = mutableMapOf<String, ByteArray>()
 
         try {
+            // Create new session (blocking call to get sessionId)
+            currentSessionId = runBlocking {
+                database?.createSession(isContactless) ?: UUID.randomUUID().toString()
+            }
+            logStatus("✓ Session created: $currentSessionId")
+
             // Phase 2: Select PPSE/PSE
-            val ppseResponse = if (isContactless) {
-                sendApdu(buildSelectCommand(PPSE_NAME))
+            val ppseCommand = if (isContactless) {
+                buildSelectCommand(PPSE_NAME)
             } else {
-                sendApdu(buildSelectCommand(PSE_NAME))
+                buildSelectCommand(PSE_NAME)
+            }
+            val ppseResponse = sendApdu(ppseCommand)
+            
+            // Log PPSE select APDU (phase marker)
+            if (currentSessionId != null) {
+                database?.saveApduLog(
+                    sessionId = currentSessionId!!,
+                    aidId = 0L,
+                    phase = "PPSE_SELECT",
+                    commandBytes = ppseCommand,
+                    responseBytes = ppseResponse ?: byteArrayOf(),
+                    statusWord = if (ppseResponse != null) 0x9000 else 0x6F00
+                )
             }
 
             if (ppseResponse == null) {
@@ -154,6 +181,7 @@ class EmvReader(private val context: Context) {
             val aids = extractAidsFromPpseResponse(ppseResponse)
             if (aids.isEmpty()) {
                 logStatus("⚠ No AIDs found in PPSE response")
+                updateSessionStatus("PARTIAL")
                 return cardData
             }
 
@@ -161,28 +189,60 @@ class EmvReader(private val context: Context) {
             val selectedAid = selectHighestPriorityAid(aids)
             if (selectedAid == null) {
                 logStatus("⚠ No valid AID selected")
+                updateSessionStatus("FAILED")
                 return cardData
             }
 
             this.selectedAid = selectedAid
             cardData["SelectedAID"] = selectedAid
             logStatus("✓ Selected AID: ${selectedAid.toHexString()}")
+            
+            // Save AID record to database
+            val aidHex = selectedAid.toHexString()
+            val cardBrand = detectCardBrand(selectedAid)
+            if (currentSessionId != null) {
+                currentAidId = runBlocking {
+                    database?.saveAidRecord(
+                        sessionId = currentSessionId!!,
+                        aidHex = aidHex,
+                        aidBytes = selectedAid,
+                        cardBrand = cardBrand,
+                        priority = 0
+                    ) ?: 0L
+                }
+                logStatus("✓ AID recorded: $aidHex ($cardBrand)")
+            }
 
             // Phase 4: Select application and get PDOL
-            val appSelectResponse = sendApdu(buildSelectCommand(selectedAid))
+            val appSelectCommand = buildSelectCommand(selectedAid)
+            val appSelectResponse = sendApdu(appSelectCommand)
             if (appSelectResponse == null) {
                 logStatus("✗ Application select failed")
+                updateSessionStatus("FAILED")
                 return cardData
+            }
+            
+            // Log app select APDU
+            if (currentSessionId != null) {
+                database?.saveApduLog(
+                    sessionId = currentSessionId!!,
+                    aidId = currentAidId,
+                    phase = "APP_SELECT",
+                    commandBytes = appSelectCommand,
+                    responseBytes = appSelectResponse,
+                    statusWord = 0x9000
+                )
             }
 
             // Parse application data (PDOL, labels, etc.)
-            val appData = parser.emvParser(appSelectResponse)
+            val appData = parser.emvParser(appSelectResponse, database, currentSessionId, currentAidId)
             cardData["ApplicationData"] = appSelectResponse
 
             // Phase 5: Execute GPO with PDOL
             val gpoResponse = executeGpo(appSelectResponse, isContactless)
             if (gpoResponse == null) {
                 logStatus("✗ GPO failed")
+                updateSessionStatus("PARTIAL")
                 return cardData
             }
 
@@ -190,7 +250,7 @@ class EmvReader(private val context: Context) {
             logStatus("✓ GPO executed successfully")
 
             // Parse GPO response for AIP and AFL
-            val gpoData = parser.emvParser(gpoResponse)
+            val gpoData = parser.emvParser(gpoResponse, database, currentSessionId, currentAidId)
             val afl = extractAflFromGpoResponse(gpoResponse)
             if (afl != null) {
                 this.currentAfl = afl
@@ -202,8 +262,10 @@ class EmvReader(private val context: Context) {
             cardData.putAll(records)
 
             logStatus("✓ EMV read completed successfully")
+            updateSessionStatus("SUCCESS")
         } catch (e: Exception) {
             logStatus("✗ EMV reader error: ${e.message}")
+            updateSessionStatus("FAILED")
         }
 
         return cardData
@@ -249,6 +311,33 @@ class EmvReader(private val context: Context) {
         } catch (e: Exception) {
             logStatus("✗ APDU send failed: ${e.message}")
             null
+        }
+    }
+    
+    /**
+     * Detect card brand from AID
+     */
+    private fun detectCardBrand(aid: ByteArray): String {
+        val aidHex = aid.toHexString()
+        return when {
+            aid.contentEquals(VISA_CLASSIC) || aid.contentEquals(VISA_CREDIT) || 
+            aid.contentEquals(VISA_DEBIT) || aid.contentEquals(VISA_ELECTRON) -> "VISA"
+            aid.contentEquals(MASTERCARD) -> "MASTERCARD"
+            aid.contentEquals(MAESTRO) -> "MAESTRO"
+            aid.contentEquals(AMEX) -> "AMEX"
+            aidHex.startsWith("A0000000031010") -> "VISA"
+            aidHex.startsWith("A0000000041010") -> "MASTERCARD"
+            aidHex.startsWith("A000000025") -> "AMEX"
+            else -> "UNKNOWN"
+        }
+    }
+    
+    /**
+     * Update session status in database
+     */
+    private fun updateSessionStatus(status: String) {
+        if (currentSessionId != null) {
+            database?.updateSessionStatus(currentSessionId!!, status)
         }
     }
 
@@ -374,7 +463,24 @@ class EmvReader(private val context: Context) {
         pdolData.add(0x08)
         pdolData.add(0x40)
 
-        return pdolData.toByteArray()
+        val pdolBytes = pdolData.toByteArray()
+        
+        // Log PDOL data to database
+        if (currentSessionId != null && currentAidId > 0L) {
+            moduleScope.launch {
+                // Update AID record with PDOL data
+                database?.saveAidRecord(
+                    sessionId = currentSessionId!!,
+                    aidHex = selectedAid?.toHexString() ?: "",
+                    aidBytes = selectedAid ?: byteArrayOf(),
+                    cardBrand = detectCardBrand(selectedAid ?: byteArrayOf()),
+                    pdolData = pdolBytes,
+                    priority = 0
+                )
+            }
+        }
+
+        return pdolBytes
     }
 
     /**
@@ -418,6 +524,7 @@ class EmvReader(private val context: Context) {
      */
     private fun readApplicationRecords(afl: ByteArray?): Map<String, ByteArray> {
         val records = mutableMapOf<String, ByteArray>()
+        val apduLogs = mutableListOf<ApduLog>()
 
         if (afl == null || afl.size % 4 != 0) {
             logStatus("⚠ Invalid AFL format")
@@ -436,18 +543,49 @@ class EmvReader(private val context: Context) {
 
                 // Read each record
                 for (record in startRecord..endRecord) {
+                    val readCommand = buildReadRecordCommand(sfi, record)
                     val recordData = readRecord(sfi, record)
                     if (recordData != null) {
                         records["Record_SFI${sfi}_REC${record}"] = recordData
                         logStatus("✓ Read record: SFI=$sfi, REC=$record (${recordData.size} bytes)")
+                        
+                        // Collect APDU log for batch save
+                        apduLogs.add(ApduLog(
+                            sessionId = currentSessionId ?: "",
+                            aidId = currentAidId,
+                            commandPhase = "READ_RECORD",
+                            commandData = readCommand,
+                            responseData = recordData,
+                            statusWord = 0x9000
+                        ))
                     }
                 }
+            }
+            
+            // Batch save all READ_RECORD APDUs
+            if (apduLogs.isNotEmpty() && currentSessionId != null) {
+                database?.saveApduLogBatch(apduLogs)
+                logStatus("✓ Logged ${apduLogs.size} READ_RECORD commands")
             }
         } catch (e: Exception) {
             logStatus("✗ Record reading failed: ${e.message}")
         }
 
         return records
+    }
+    
+    /**
+     * Build READ RECORD command for logging
+     */
+    private fun buildReadRecordCommand(sfi: Int, record: Int): ByteArray {
+        val p2 = ((sfi shl 3) or 0x04).toByte()
+        return byteArrayOf(
+            CLA_STANDARD,
+            INS_READ_RECORD,
+            record.toByte(),
+            p2,
+            0x00
+        )
     }
 
     /**
@@ -546,6 +684,12 @@ class EmvReader(private val context: Context) {
         try {
             selectedAid = null
             currentAfl = null
+            currentSessionId = null
+            currentAidId = 0L
+            
+            // Close database
+            database?.close()
+            
             isInitialized = false
             logStatus("✓ EMV reader shutdown")
         } catch (e: Exception) {

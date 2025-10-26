@@ -1,6 +1,9 @@
 package com.nfsp00fpro.app.modules
 
 import java.nio.ByteBuffer
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * EMV BER-TLV Parser Module
@@ -14,6 +17,7 @@ import java.nio.ByteBuffer
  * - Constructed tag recursive parsing
  * - Full byte-level operations (no conversions)
  * - Support for 200+ EMV tag definitions
+ * - Async database persistence (batch save after parse, non-blocking)
  *
  * Specification Reference:
  * - EMV Book 1 (Tag definitions)
@@ -21,11 +25,17 @@ import java.nio.ByteBuffer
  */
 class EmvParser {
 
+    // Coroutine scope for async database saves
+    private val parserScope = CoroutineScope(Dispatchers.IO)
+
     /**
      * Parse raw EMV binary data into structured tag map
      *
      * Parameters:
      * - data: ByteArray - Raw binary EMV data
+     * - database: EmvDatabase? - Database for async tag persistence (optional)
+     * - sessionId: String? - Session ID for database (required if database provided)
+     * - aidId: Long - AID ID for database (0 if not applicable)
      *
      * Returns: Map<String, EmvTag> - Map of tag hex strings to parsed tag objects
      *
@@ -34,10 +44,17 @@ class EmvParser {
      * 2. Parse length value
      * 3. Extract tag data
      * 4. Recursively parse constructed tags
-     * 5. Return structured map
+     * 5. Batch save all parsed tags to database (async, non-blocking)
+     * 6. Return structured map
      */
-    fun emvParser(data: ByteArray): Map<String, EmvTag> {
+    fun emvParser(
+        data: ByteArray,
+        database: EmvDatabase? = null,
+        sessionId: String? = null,
+        aidId: Long = 0L
+    ): Map<String, EmvTag> {
         val tagMap = mutableMapOf<String, EmvTag>()
+        val allTags = mutableListOf<TlvTag>()
         var offset = 0
 
         while (offset < data.size) {
@@ -50,6 +67,12 @@ class EmvParser {
 
                 val (tagHex, tagObject, nextOffset) = tagParseResult
                 tagMap[tagHex] = tagObject
+                
+                // Collect for database (if database provided)
+                if (database != null && sessionId != null) {
+                    collectTlvTags(tagObject, tagHex, sessionId, aidId, allTags, depth = 0)
+                }
+                
                 offset = nextOffset
             } catch (e: Exception) {
                 logStatus("✗ Parse error at offset $offset: ${e.message}")
@@ -57,7 +80,50 @@ class EmvParser {
             }
         }
 
+        // Batch save all collected tags to database (async, non-blocking)
+        if (database != null && sessionId != null && allTags.isNotEmpty()) {
+            parserScope.launch {
+                database.saveTlvTagBatch(allTags)
+                logStatus("✓ Batch saved ${allTags.size} TLV tags to database")
+            }
+        }
+
         return tagMap
+    }
+    
+    /**
+     * Collect TLV tags recursively for database persistence
+     */
+    private fun collectTlvTags(
+        tag: EmvTag,
+        tagHex: String,
+        sessionId: String,
+        aidId: Long,
+        allTags: MutableList<TlvTag>,
+        depth: Int
+    ) {
+        // Add this tag
+        allTags.add(TlvTag(
+            sessionId = sessionId,
+            aidId = aidId,
+            tagHex = tagHex,
+            tagBytes = tag.tagBytes,
+            valueBytes = if (tag.value is EmvTagValue.Primitive) {
+                (tag.value as EmvTagValue.Primitive).data
+            } else {
+                byteArrayOf()
+            },
+            isConstructed = tag.isConstructed,
+            depth = depth
+        ))
+        
+        // Recursively add nested tags
+        if (tag.isConstructed && tag.value is EmvTagValue.Constructed) {
+            val nestedTags = (tag.value as EmvTagValue.Constructed).tags
+            for ((nestedHex, nestedTag) in nestedTags) {
+                collectTlvTags(nestedTag, nestedHex, sessionId, aidId, allTags, depth + 1)
+            }
+        }
     }
 
     /**
