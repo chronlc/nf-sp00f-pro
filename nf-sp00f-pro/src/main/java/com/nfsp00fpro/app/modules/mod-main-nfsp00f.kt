@@ -23,12 +23,18 @@ import java.util.UUID
  * Supported Devices:
  * 1. PN532 NFC Reader (Bluetooth + USB)
  * 2. Android Internal NFC Adapter
+ * 3. EMV Parser (BER-TLV parsing)
+ * 4. EMV Reader (APDU-based card scanning)
  */
 class ModMainNfsp00f(private val context: Context) {
 
-    // Module instances
+    // Device modules
     private var pn532Module: ModDevicePn532? = null
     private var androidNfcModule: ModDeviceAndroidNfc? = null
+
+    // EMV modules
+    private var emvParserModule: EmvParser? = null
+    private var emvReaderModule: EmvReader? = null
 
     // Module status
     private var isInitialized = false
@@ -43,8 +49,10 @@ class ModMainNfsp00f(private val context: Context) {
      * This method:
      * 1. Initializes PN532 module (with Bluetooth auto-connect)
      * 2. Initializes Android NFC module
-     * 3. Starts health check monitoring
-     * 4. Sets initialized flag
+     * 3. Initializes EMV Parser module
+     * 4. Initializes EMV Reader module
+     * 5. Starts health check monitoring
+     * 6. Sets initialized flag
      */
     fun initialize() {
         try {
@@ -60,6 +68,14 @@ class ModMainNfsp00f(private val context: Context) {
             // Initialize Android NFC Module
             androidNfcModule = ModDeviceAndroidNfc(context)
             androidNfcModule?.initialize()
+
+            // Initialize EMV Parser Module
+            emvParserModule = EmvParser()
+            logStatus("✓ EMV Parser module initialized")
+
+            // Initialize EMV Reader Module
+            emvReaderModule = EmvReader(context)
+            emvReaderModule?.initialize()
 
             // Start health monitoring
             startHealthMonitoring()
@@ -127,6 +143,11 @@ class ModMainNfsp00f(private val context: Context) {
             ?: ModuleHealth("AndroidNFC", false, "Not initialized")
         healthMap["AndroidNFC"] = androidNfcHealth
 
+        // Check EMV Reader health
+        val emvReaderHealth = emvReaderModule?.getHealthStatus()
+            ?: ModuleHealth("EMVReader", false, "Not initialized")
+        healthMap["EMVReader"] = emvReaderHealth
+
         return healthMap
     }
 
@@ -160,6 +181,16 @@ class ModMainNfsp00f(private val context: Context) {
     fun getAndroidNfcModule(): ModDeviceAndroidNfc? = androidNfcModule
 
     /**
+     * Get EMV Parser module
+     */
+    fun getEmvParserModule(): EmvParser? = emvParserModule
+
+    /**
+     * Get EMV Reader module
+     */
+    fun getEmvReaderModule(): EmvReader? = emvReaderModule
+
+    /**
      * Check if all modules are initialized
      */
     fun isInitialized(): Boolean = isInitialized
@@ -171,6 +202,8 @@ class ModMainNfsp00f(private val context: Context) {
         try {
             pn532Module?.shutdown()
             androidNfcModule?.shutdown()
+            emvReaderModule?.shutdown()
+            emvParserModule = null
             isInitialized = false
             logStatus("✓ All modules shut down")
         } catch (e: Exception) {
