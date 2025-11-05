@@ -38,6 +38,7 @@ out/
 
 # Process and AI files
 .github/instructions/
+!.github/instructions/code-generation-rules.instructions.md
 docs/
 emv_apdu_workflow.md
 emv_tag_database.md
