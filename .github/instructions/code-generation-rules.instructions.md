@@ -283,42 +283,88 @@ Rules:
 - Use exact types documented
 - Apply explicit conversions where documented
 - No improvisation, no "I think it's...", no guessing
+- **ADD COMPREHENSIVE COMMENTS** explaining what each block does and why
+- **NO SIMULATION, NO MOCK DATA** - ONLY real data from actual sources
 
-**Anti-Pattern:**
+**Anti-Pattern - NEVER DO THIS:**
 ```kotlin
-// Typing from memory, guessing
+// ❌ Typing from memory, guessing
 val items = viewModel.items.collectAsState()  // Wrong! It's "products" not "items"
 Text(product.cost)                            // Wrong! It's "price" not "cost", and needs .toString()
 
-// HARDCODED DATA - NEVER DO THIS
+// ❌ HARDCODED DATA - NEVER DO THIS
 HardwareComponentRow(
     title = "PN532 NFC Module (USB)",
     status = "Available",                     // ❌ HARDCODED - Not real data!
     details = "Ready for connection"
 )
+
+// ❌ SIMULATION/MOCK DATA - NEVER DO THIS
+fun simulateCardRead() {
+    _cardData.value = CardSession(           // ❌ Creating fake data
+        pan = "123456XXXXXX7890",             // ❌ This is simulation, not real device
+        cardHolder = "Test User"
+    )
+}
 ```
 
-**CRITICAL RULE - NO HARDCODED DATA:**
+**CRITICAL RULES - NO HARDCODED DATA, NO SIMULATION:**
 - ❌ NEVER hardcode status strings like "Available", "Ready", "Connected"  
 - ❌ NEVER use placeholder values that pretend to be real
-- ✅ ALWAYS bind to real data sources (StateFlow, LiveData, coroutines)
-- ✅ ALWAYS read actual device state, API responses, database queries
+- ❌ NEVER create `simulate*()` methods that generate fake data
+- ❌ NEVER create mock data generators in production code
+- ✅ ALWAYS bind to real data sources (StateFlow, LiveData, coroutines, actual device)
+- ✅ ALWAYS read actual device state, API responses, database queries, hardware modules
 - ✅ If data isn't available yet, show a loading state, not fake data
+- ✅ If a feature requires device interaction, connect to actual device module
 
-**Correct Pattern:**
+**Correct Pattern - ONLY REAL DATA:**
 ```kotlin
-// Referencing documentation from Step 4
+// ✅ Referencing documentation from Step 4
 val products by viewModel.products.collectAsState()  // ✅ Exact name from Step 4
 Text("${product.price}")                             // ✅ Exact name + explicit conversion from Step 5
 
-// REAL DATA - Always use actual state
+// ✅ REAL DATA - Always use actual state from devices/database/API
 val pn532Status by viewModel.pn532UsbStatus.collectAsState(initial = "Initializing")
 HardwareComponentRow(
     title = "PN532 NFC Module (USB)",
     status = pn532Status,                     // ✅ Real data from ViewModel
     details = "USB device state: $pn532Status"
 )
+
+// ✅ Real data loading from database
+fun loadRecentReads() {
+    viewModelScope.launch {
+        try {
+            // Real data source: EmvDatabase - gets actual sessions from device storage
+            val reads = emvDatabase.getRecentSessions(limit = 10)
+            _recentReads.value = reads
+            // Log the operation for debugging
+            ModMainDebug.debugLog(
+                module = "CardReadViewModel",
+                operation = "recent_reads_loaded",
+                data = mapOf("count" to reads.size.toString())
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // Log error for debugging
+            ModMainDebug.debugLog(
+                module = "CardReadViewModel",
+                operation = "load_error",
+                data = mapOf("error" to (e.message ?: "Unknown error"))
+            )
+        }
+    }
+}
 ```
+
+**COMMENTING REQUIREMENTS:**
+- ✅ Every function must have KDoc comment explaining purpose
+- ✅ Every data-binding line must have inline comment explaining data source
+- ✅ Every StateFlow collection must comment what real data source it represents
+- ✅ Every ViewModel method must document where data comes from (database, API, device, etc.)
+- ✅ Every error handling block must include debug logging via ModMainDebug
+- ✅ No line of code should make you guess "where does this data come from?"
 
 ---
 
@@ -331,6 +377,8 @@ For generated code:
 2. Compare every method call with Step 4 documentation
 3. Verify every type conversion from Step 5 is applied
 4. Check for any guessed names (if you didn't document it, you guessed it)
+5. **CRITICAL: Search for simulate/mock functions and remove ALL of them**
+6. **CRITICAL: Verify ALL data comes from real sources, never hardcoded**
 
 **Validation Checklist:**
 ```
@@ -341,9 +389,188 @@ For generated code:
 □ No assumptions about nullability
 □ No assumptions about types
 □ NO hardcoded status strings or mock data values
+□ NO simulate*() functions that generate fake data
+□ NO mock data constructors that create test values
 □ ALL UI data bound to real sources (StateFlow, API, database, sensors)
 □ Loading states used when data not yet available
+□ Every StateFlow/data property has inline comment explaining data source
+□ Every ViewModel method documents where real data comes from
+□ Every error handling includes ModMainDebug logging
 ```
+
+**SPECIFIC ANTI-PATTERNS TO ELIMINATE:**
+```kotlin
+// ❌ REMOVE ALL OF THESE PATTERNS:
+
+// Mock/simulate functions
+fun simulateCardRead() { ... }  // ❌ DELETE
+fun mockHardwareStatus() { ... }  // ❌ DELETE
+fun generateTestData() { ... }  // ❌ DELETE
+
+// Hardcoded fake values
+_cardData.value = CardSession(pan = "123456...", cardHolder = "Test")  // ❌ DELETE
+_status.value = "Ready"  // ❌ Change to real data from device/API/database
+
+// Placeholder/test data passed as parameters
+createCard(pan = "1234567890", holder = "TestUser")  // ❌ DELETE or use real values
+```
+
+**CORRECT PATTERN - REAL DATA ONLY:**
+```kotlin
+// ✅ KEEP THESE PATTERNS:
+
+// Real data from actual sources
+fun loadRecentSessions() {
+    viewModelScope.launch {
+        try {
+            val sessions = emvDatabase.getRecentSessions(limit = 10)  // ✅ Real database
+            _sessions.value = sessions
+        } catch (e: Exception) {
+            // Log real errors
+            ModMainDebug.debugLog("Module", "operation", mapOf("error" to e.message))
+        }
+    }
+}
+
+// Real hardware state
+val bluetoothStatus = ModDeviceBluetoothAdapter.getStatus()  // ✅ Real device state
+_status.value = bluetoothStatus  // ✅ Real value from device
+```
+
+---
+
+### STEP 7.5: FUNCTIONALITY PRESERVATION VALIDATION (5 minutes, MANDATORY IF CODE SIMPLIFIED)
+
+**Critical Gate: Did simplification remove intended functionality?**
+
+**When to apply this step:**
+- You simplified code by removing methods/properties
+- You changed architecture or refactored existing code
+- You removed mock data or test functions
+- You combined multiple functions into fewer functions
+- You changed how data flows through the system
+
+**Functionality Verification Checklist:**
+
+Before marking code complete, answer YES to ALL of these:
+
+```
+□ What was the ORIGINAL intended functionality?
+  - Document what the code was supposed to do
+  - List all features/operations it should perform
+  - Note all user interactions it should support
+
+□ What functionality was REMOVED or CHANGED?
+  - List every method that was deleted
+  - Document every property that was removed
+  - Note every operation that was simplified
+  - Explain WHY each removal was necessary
+
+□ Can all original use cases still be performed?
+  - Test scenario: Can user still trigger all operations?
+  - Test scenario: Do all data flows still work?
+  - Test scenario: Are all error conditions still handled?
+  - Test scenario: Is all logging still in place?
+
+□ Was functionality moved or just removed?
+  - If moved: Where is the functionality now? Is it accessible?
+  - If moved: Is it documented where functionality went?
+  - If removed: Is there a TODO explaining why and when it will be restored?
+
+□ Are there any TODO comments for future work?
+  - Mark clearly what functionality is pending device integration
+  - Document what real hardware interaction is needed
+  - Specify what conditions need to be met before functionality is complete
+  - Include timeline or priority
+
+□ Will real device interaction eventually provide this?
+  - If waiting for device: Is path clear for device to integrate?
+  - If waiting for device: Are stub methods in place to accept real data?
+  - If waiting for device: Is there a plan/TODO for device integration?
+```
+
+**Example - BAD (Functionality Lost):**
+```kotlin
+// ❌ BEFORE: Had temperature reading
+fun readTemperature() {
+    val temp = sensor.getTemperature()
+    _temperature.value = temp
+}
+
+// ❌ AFTER: Functionality completely removed
+// (No comment explaining why, no TODO, no alternative)
+// User can no longer read temperature at all
+```
+
+**Example - GOOD (Functionality Preserved):**
+```kotlin
+// ✅ BEFORE: Had mock temperature reading for testing
+fun readTemperature() {
+    _temperature.value = "72°F"  // Mock data for testing
+}
+
+// ✅ AFTER: Refactored to use real hardware
+// (Clear documentation of what changed and why)
+/**
+ * Start real temperature read from actual sensor hardware
+ * TODO: Integrate with ModDeviceSensor.readTemperature() when device API available
+ * Currently logs readiness for real device - no mock data
+ */
+fun startTemperatureRead() {
+    viewModelScope.launch {
+        try {
+            // Real data will come from: ModDeviceSensor.readTemperature()
+            // For now: System is ready to receive real sensor data
+            ModMainDebug.debugLog(
+                module = "TempViewModel",
+                operation = "temperature_read_ready",
+                data = mapOf("waiting_for" to "real_device_input")
+            )
+        } catch (e: Exception) {
+            ModMainDebug.debugLog(
+                module = "TempViewModel",
+                operation = "read_error",
+                data = mapOf("error" to e.message)
+            )
+        }
+    }
+}
+```
+
+**Example - Functionality Preserved with TODO:**
+```kotlin
+/**
+ * Removed simulateCardRead() because:
+ * - Mock data should not exist in production code
+ * - Real device integration required instead
+ * 
+ * TODO: Card reading will be provided by actual NFC device when:
+ * - ModMainNfsp00f completes device read integration
+ * - Real APDU responses are received from card
+ * - Session data is stored in database
+ * 
+ * Until then: startCardReading() logs readiness for device input
+ * and loads real historical sessions from database
+ */
+fun startCardReading() {
+    // Real card read will come from actual hardware
+}
+```
+
+**GATE CHECK - Do NOT proceed to STEP 8 if:**
+- ❌ Functionality was removed but not documented with TODO
+- ❌ Functionality was removed but no replacement path exists
+- ❌ Code appears to work but doesn't actually perform intended operations
+- ❌ User interactions removed but not documented why
+- ❌ Testing capability removed without explanation
+- ❌ Any original use case can no longer be performed
+
+**If any check fails:**
+1. Add explicit TODO comments documenting what's missing
+2. Ensure real data source is documented (device, API, database)
+3. Add placeholder/stub for future functionality
+4. Document why simplification was necessary
+5. THEN proceed to STEP 8
 
 ---
 
