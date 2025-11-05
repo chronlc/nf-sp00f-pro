@@ -39,6 +39,13 @@ fun DashboardScreen() {
     val viewModel: DashboardViewModel = viewModel(factory = DashboardViewModel.Factory(context))
     val recentSessions by viewModel.recentSessions.collectAsState(initial = emptyList())
     val hardwareReady by viewModel.hardwareReady.collectAsState(initial = false)
+    
+    // Collect real hardware status from ViewModel
+    val androidNfcStatus by viewModel.androidNfcStatus.collectAsState()
+    val bluetoothStatus by viewModel.bluetoothStatus.collectAsState()
+    val pn532BluetoothStatus by viewModel.pn532BluetoothStatus.collectAsState()
+    val pn532UsbStatus by viewModel.pn532UsbStatus.collectAsState()
+    val emvParserStatus by viewModel.emvParserStatus.collectAsState()
 
     if (!hardwareReady) {
         InitializingScreen()
@@ -59,8 +66,14 @@ fun DashboardScreen() {
         // Stats cards row (multiple rows)
         StatsCardsRow(recentSessions.size)
 
-        // Hardware status grid
-        HardwareStatusGrid()
+        // Hardware status grid with real data
+        HardwareStatusGrid(
+            androidNfcStatus = androidNfcStatus,
+            bluetoothStatus = bluetoothStatus,
+            pn532BluetoothStatus = pn532BluetoothStatus,
+            pn532UsbStatus = pn532UsbStatus,
+            emvParserStatus = emvParserStatus
+        )
 
         // Recent cards section
         RecentCardsSection(recentSessions)
@@ -295,7 +308,13 @@ private fun StatCard(
 }
 
 @Composable
-private fun HardwareStatusGrid() {
+private fun HardwareStatusGrid(
+    androidNfcStatus: String,
+    bluetoothStatus: String,
+    pn532BluetoothStatus: String,
+    pn532UsbStatus: String,
+    emvParserStatus: String
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1F1F)),
@@ -315,32 +334,32 @@ private fun HardwareStatusGrid() {
             // Android Native Hardware
             HardwareComponentRow(
                 title = "Android NFC Controller",
-                status = "Available",
+                status = androidNfcStatus,
                 details = "NFC Type-A/B/F supported"
             )
 
             HardwareComponentRow(
                 title = "Android Bluetooth Stack",
-                status = "Available",
+                status = bluetoothStatus,
                 details = "BLE & Classic supported"
             )
 
             // PN532 External Hardware
             HardwareComponentRow(
                 title = "PN532 NFC Module (Bluetooth)",
-                status = "Scanning",
+                status = pn532BluetoothStatus,
                 details = "Looking for device..."
             )
 
             HardwareComponentRow(
                 title = "PN532 NFC Module (USB)",
-                status = "Available",
-                details = "Ready for connection"
+                status = pn532UsbStatus,
+                details = "USB device not detected"
             )
 
             HardwareComponentRow(
                 title = "EMV Parser Engine",
-                status = "Ready",
+                status = emvParserStatus,
                 details = "EMV L1 & L2 support"
             )
         }
