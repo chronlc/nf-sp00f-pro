@@ -358,13 +358,174 @@ fun loadRecentReads() {
 }
 ```
 
-**COMMENTING REQUIREMENTS:**
-- ✅ Every function must have KDoc comment explaining purpose
-- ✅ Every data-binding line must have inline comment explaining data source
-- ✅ Every StateFlow collection must comment what real data source it represents
-- ✅ Every ViewModel method must document where data comes from (database, API, device, etc.)
-- ✅ Every error handling block must include debug logging via ModMainDebug
-- ✅ No line of code should make you guess "where does this data come from?"
+**COMMENTING REQUIREMENTS - EVERY GENERATED FILE:**
+
+**KDoc for Every Function/Method:**
+```kotlin
+/**
+ * Brief one-line description of what this does
+ * 
+ * Longer explanation if needed - what is the purpose, what does it return
+ * 
+ * @param paramName Description of this parameter - what data type, what range
+ * @return Description of return value - what data is returned, when is it null
+ * 
+ * Real Data Source: [WHERE the data comes from - database/API/device/sensor/etc]
+ * Logging: [If this logs, what operation name is used]
+ */
+fun methodName(paramName: Type): ReturnType
+```
+
+**Inline Comments for Every Complex Block:**
+```kotlin
+// Initialize real data source connection - gets actual records from database
+val database = EmvDatabase(context)
+
+// Collect real StateFlow data - represents actual card sessions previously read
+val recentReads by viewModel.recentReads.collectAsState(initial = emptyList())
+
+// Update UI with real hardware status from device module - "Ready", "Error", etc.
+_hardwareStatus.value = actualDeviceStatus
+
+// Error handling with real error logging
+try {
+    val data = realDataSource.fetch()  // Could throw real exception from device/database
+} catch (e: Exception) {
+    // Log the real error that occurred for debugging
+    ModMainDebug.debugLog("ModuleName", "operation", mapOf("error" to e.message))
+}
+```
+
+**StateFlow Property Comments:**
+```kotlin
+// Real card session from hardware read (null until device provides actual card)
+private val _cardData = MutableStateFlow<CardSession?>(null)
+
+// Actual reading state from NFC hardware polling (true only during active device scan)
+private val _isReading = MutableStateFlow(false)
+
+// Real progress from actual device APDU transaction (0-100%)
+private val _readingProgress = MutableStateFlow(0)
+```
+
+**Comments Should Answer:**
+- ❓ "Where does this data come from?" → Answer in comment
+- ❓ "Is this real or test data?" → Make it clear
+- ❓ "What values can this have?" → Document valid range/states
+- ❓ "When will this be null/empty?" → Explain conditions
+- ❓ "What happens if this fails?" → Document error handling
+
+**Real Examples - GOOD Code Comments:**
+```kotlin
+/**
+ * Load recent card reading sessions from persistent database storage
+ * Returns real CardSession records from previous device reads
+ * 
+ * @return List of actual card sessions stored in database
+ * 
+ * Real Data Source: EmvDatabase.getRecentSessions() - direct database query
+ * Logging: Logs count of sessions retrieved and any database errors
+ */
+private fun loadRecentReads() {
+    viewModelScope.launch {
+        try {
+            // Query real database for actual card reading sessions (persistent records)
+            val reads = emvDatabase.getRecentSessions(limit = 10)
+            
+            // Update StateFlow with real data - not null until database has records
+            _recentReads.value = reads
+            
+            // Log successful real data retrieval for debugging
+            ModMainDebug.debugLog(
+                module = "CardReadViewModel",
+                operation = "recent_reads_loaded",
+                data = mapOf("count" to reads.size.toString())
+            )
+        } catch (e: Exception) {
+            // Real exception from database operation - log for troubleshooting
+            e.printStackTrace()
+            ModMainDebug.debugLog(
+                module = "CardReadViewModel",
+                operation = "load_error",
+                data = mapOf("error" to (e.message ?: "Unknown error"))
+            )
+        }
+    }
+}
+
+/**
+ * Start real NFC card reading from actual hardware device
+ * System will listen for real card detection and update cardData StateFlow
+ * 
+ * Real Data Source: Awaits input from actual NFC hardware device module
+ * Logging: Logs when system is ready for device input
+ */
+fun startCardReading() {
+    viewModelScope.launch {
+        // Set to true only during actual hardware device polling
+        _isReading.value = true
+        
+        // Log that system is ready for real device to provide card data
+        ModMainDebug.debugLog(
+            module = "CardReadViewModel",
+            operation = "card_read_start",
+            data = mapOf("timestamp" to System.currentTimeMillis().toString())
+        )
+
+        try {
+            // System waits for ACTUAL NFC device to detect and read card
+            // When real device provides data, it will populate CardSession in database
+            
+            // Update status to show device is ready for actual card read
+            _hardwareStatus.value = "Ready for card"
+            
+            // Log readiness - system is in active listening state
+            ModMainDebug.debugLog(
+                module = "CardReadViewModel",
+                operation = "waiting_for_device_read",
+                data = mapOf("ready" to "true")
+            )
+            
+        } catch (e: Exception) {
+            // Real error from device interaction attempt
+            e.printStackTrace()
+            
+            // Update status to show error occurred
+            _hardwareStatus.value = "Read Error"
+            
+            // Log real error for debugging device issues
+            ModMainDebug.debugLog(
+                module = "CardReadViewModel",
+                operation = "card_read_error",
+                data = mapOf("error" to (e.message ?: "Unknown error"))
+            )
+        } finally {
+            // Reset to false after read attempt completes
+            _isReading.value = false
+            _readingProgress.value = 0
+        }
+    }
+}
+```
+
+**Checklist Before Submitting Generated Code:**
+```
+Code Comments:
+□ Every function has KDoc explaining purpose and real data source
+□ Every StateFlow property has comment explaining what real data it represents
+□ Every data-binding line has inline comment explaining where data comes from
+□ Every database/API call has comment noting it's real data
+□ Every exception handler has comment about what real error it's handling
+□ Every null/empty state has comment explaining when it occurs
+□ Every loop/condition has comment if not obvious what real data it's processing
+
+Code Clarity:
+□ If a developer reads a line, they KNOW where the data comes from (no guessing)
+□ If a developer reads a line, they KNOW if it's real or test data
+□ If a developer reads a line, they KNOW what can go wrong and how errors are logged
+□ No confusing variable names - names match documentation from STEP 4 exactly
+□ No "magic values" - all constants explained via comments or KDoc
+```
 
 ---
 

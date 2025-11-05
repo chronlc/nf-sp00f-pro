@@ -29,13 +29,22 @@ import java.util.Date
 /**
  * Card Read Screen - NFC Card Reading Interface
  * Displays real-time card reading with APDU logs and history
+ * 
+ * Data Flow:
+ * - CardReadViewModel loads real session history from database on init
+ * - User taps "Start Reading" button → startCardReading() called
+ * - System waits for actual NFC device to provide card data
+ * - When device reads card, CardSession is stored in database
+ * - UI updates via StateFlows: cardData, isReading, readingProgress, hardwareStatus, recentReads
+ * 
+ * All data is REAL - comes from database or actual hardware device (no mock/simulation)
  */
 @Composable
 fun CardReadScreen() {
     val context = LocalContext.current
     val viewModel: CardReadViewModel = viewModel(factory = CardReadViewModel.Factory(context))
 
-    // Collect real state from ViewModel
+    // Collect real state from ViewModel - these come from database and device modules
     val cardData by viewModel.cardData.collectAsState()
     val isReading by viewModel.isReading.collectAsState()
     val readingProgress by viewModel.readingProgress.collectAsState()
@@ -75,6 +84,15 @@ fun CardReadScreen() {
 
 @Composable
 private fun HeaderStatusCard(hardwareStatus: String) {
+    /**
+     * Display current hardware status - shows if NFC device is ready
+     * 
+     * @param hardwareStatus Real status from device (e.g., "Ready for card", "Waiting for device")
+     * 
+     * Data Source: comes from CardReadViewModel.hardwareStatus StateFlow
+     * Updates when: Device status changes or system state changes
+     * Display: Shows user if they can read a card or what hardware error exists
+     */
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF121717)),
@@ -118,6 +136,22 @@ private fun CardReaderPanel(
     readingProgress: Int,
     onStartRead: () -> Unit
 ) {
+    /**
+     * Main card reader interface - shows NFC reader status and card details
+     * 
+     * @param cardData Real card session from device (null until card is read) - comes from database
+     * @param isReading Actual reading state from hardware (true during active NFC polling)
+     * @param readingProgress Real progress 0-100% from device APDU exchanges
+     * @param onStartRead Callback to trigger real device card read - calls ViewModel.startCardReading()
+     * 
+     * Display States:
+     * - No card: Shows NFC icon, "Ready for Card" message, start button
+     * - Card read: Shows checkmark, "Card Read Successfully", displays card details
+     * - During read: Shows progress bar with percentage, disabled start button
+     * 
+     * Data Sources: All from CardReadViewModel StateFlows (database and device state)
+     * No hardcoded values or mock data in this UI
+     */
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -198,6 +232,20 @@ private fun CardReaderPanel(
 
 @Composable
 private fun CardDetailsPanel(cardData: CardSession) {
+    /**
+     * Display details of a card session read by actual device
+     * 
+     * @param cardData Real CardSession from database - contains sessionId, type, status, timestamp
+     * 
+     * Displays:
+     * - Session ID (last 8 chars for brevity)
+     * - Card Type (Contactless NFC or Contact)
+     * - Status (PENDING, SUCCESS, PARTIAL, FAILED - from actual device result)
+     * - Read Time (formatted from real timestamp)
+     * 
+     * Data Source: Real CardSession from database - actual device read record
+     * When visible: Only shown after device successfully reads a card (cardData != null)
+     */
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1F1F)),
@@ -248,6 +296,20 @@ private fun CardDetailRow(label: String, value: String) {
 
 @Composable
 private fun RecentReadsSection(recentReads: List<CardSession>) {
+    /**
+     * Display list of recent card sessions from database history
+     * 
+     * @param recentReads Real list of CardSession objects from database (last 10 reads)
+     *
+     * Data Source: Loaded from EmvDatabase.getRecentSessions() - actual device read history
+     * Updates: Reloaded whenever a new card is successfully read by device
+     * Display:
+     * - Empty state: "No recent card reads" message if database is empty
+     * - List items: Shows session ID (last 8 chars), timestamp, and read status
+     * - Status color: Green for SUCCESS, Red for other statuses
+     * 
+     * This is REAL historical data from device reads - not simulation or test data
+     */
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1F1F)),
@@ -292,6 +354,21 @@ private fun RecentReadsSection(recentReads: List<CardSession>) {
 
 @Composable
 private fun RecentReadItem(session: CardSession) {
+    /**
+     * Single card session item for recent reads list
+     * 
+     * @param session Real CardSession from database - represents one actual device read
+     * 
+     * Displays:
+     * - Last 8 chars of sessionId (unique identifier for this read)
+     * - Formatted timestamp (HH:mm:ss - when device read the card)
+     * - Read status with color coding:
+     *   - GREEN for "SUCCESS" (card read properly)
+     *   - RED for error statuses (FAILED, PARTIAL, PENDING)
+     * 
+     * Data Source: Individual CardSession from database list
+     * Type: Real record of actual NFC device reading
+     */
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)),
