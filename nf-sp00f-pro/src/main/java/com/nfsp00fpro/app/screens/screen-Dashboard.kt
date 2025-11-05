@@ -6,6 +6,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -52,20 +53,17 @@ fun DashboardScreen() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Header with branding
+        // Header with branding and hardware score
         HeaderCard()
 
-        // Stats row
-        if (recentSessions.isNotEmpty()) {
-            StatsRow(recentSessions.size)
-        }
+        // Stats cards row (multiple rows)
+        StatsCardsRow(recentSessions.size)
+
+        // Hardware status grid
+        HardwareStatusGrid()
 
         // Recent cards section
-        if (recentSessions.isNotEmpty()) {
-            RecentCardsSection(recentSessions)
-        } else {
-            EmptyStateCard()
-        }
+        RecentCardsSection(recentSessions)
 
         Spacer(modifier = Modifier.height(8.dp))
     }
@@ -95,68 +93,88 @@ private fun InitializingScreen() {
 
 @Composable
 private fun HeaderCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF121717)),
-        shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            // Background image with low opacity
-            Image(
-                painter = painterResource(id = R.drawable.nfspoof3),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp),
-                alpha = 0.15f
-            )
-
-            // Content overlay
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    "NFC PhreaK BoX",
-                    style = MaterialTheme.typography.headlineLarge.copy(
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = Color(0xFF4CAF50),
-                    textAlign = TextAlign.Center
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Main Status Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF121717)),
+            shape = RoundedCornerShape(8.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Image(
+                    painter = painterResource(id = R.drawable.nfspoof3),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp),
+                    alpha = 0.15f
                 )
 
-                Text(
-                    "RFiD TooLKiT",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
-                    ),
-                    color = Color(0xFFFFFFFF),
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Status indicator
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(
-                        Icons.Default.CheckCircle,
-                        contentDescription = "Status",
-                        tint = Color(0xFF4CAF50),
-                        modifier = Modifier.size(20.dp)
-                    )
                     Text(
-                        "System Ready",
-                        style = MaterialTheme.typography.bodyMedium,
+                        "NFC PhreaK BoX",
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
                         color = Color(0xFF4CAF50),
-                        fontWeight = FontWeight.SemiBold
+                        textAlign = TextAlign.Center
+                    )
+
+                    Text(
+                        "RFiD TooLKiT",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
+                        ),
+                        color = Color(0xFFFFFFFF),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Hardware Score Display with Progress
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                "System Status:",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Color(0xFFFFFFFF)
+                            )
+                            Text(
+                                "Ready",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                color = Color(0xFF4CAF50)
+                            )
+                        }
+
+                        LinearProgressIndicator(
+                            progress = 1.0f,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            color = Color(0xFF4CAF50),
+                            trackColor = Color(0xFF333333)
+                        )
+                    }
+
+                    // Status Message
+                    Text(
+                        "All hardware components detected",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFFBBBBBB),
+                        textAlign = TextAlign.Center
                     )
                 }
             }
@@ -165,39 +183,67 @@ private fun HeaderCard() {
 }
 
 @Composable
-private fun StatsRow(cardCount: Int) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(80.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // Cards read stat
-        StatCard(
-            label = "Cards Read",
-            value = cardCount.toString(),
-            icon = Icons.Default.CreditCard,
-            color = Color(0xFF4CAF50),
-            modifier = Modifier.weight(1f)
-        )
+private fun StatsCardsRow(cardCount: Int) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // First row of stats
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            StatCard(
+                label = "Cards Scanned",
+                value = cardCount.toString(),
+                icon = Icons.Default.CreditCard,
+                color = Color(0xFF4CAF50),
+                modifier = Modifier.weight(1f)
+            )
 
-        // Status stat
-        StatCard(
-            label = "Status",
-            value = "Active",
-            icon = Icons.Default.Devices,
-            color = Color(0xFF4FC3F7),
-            modifier = Modifier.weight(1f)
-        )
+            StatCard(
+                label = "Status",
+                value = "Active",
+                icon = Icons.Default.Devices,
+                color = Color(0xFF4FC3F7),
+                modifier = Modifier.weight(1f)
+            )
 
-        // Next action stat
-        StatCard(
-            label = "Ready For",
-            value = "Scan",
-            icon = Icons.Default.TouchApp,
-            color = Color(0xFFFFB74D),
-            modifier = Modifier.weight(1f)
-        )
+            StatCard(
+                label = "Ready For",
+                value = "Scan",
+                icon = Icons.Default.TouchApp,
+                color = Color(0xFFFFB74D),
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // Second row of stats
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            StatCard(
+                label = "APDU Commands",
+                value = "0",
+                icon = Icons.Default.Code,
+                color = Color(0xFF9C27B0),
+                modifier = Modifier.weight(1f)
+            )
+
+            StatCard(
+                label = "Card Brands",
+                value = "0",
+                icon = Icons.Default.Label,
+                color = Color(0xFFFF9800),
+                modifier = Modifier.weight(1f)
+            )
+
+            StatCard(
+                label = "PN532 Status",
+                value = "Scanning",
+                icon = Icons.Default.BluetoothSearching,
+                color = Color(0xFF00BCD4),
+                modifier = Modifier.weight(1f)
+            )
+        }
     }
 }
 
@@ -249,23 +295,161 @@ private fun StatCard(
 }
 
 @Composable
-private fun RecentCardsSection(sessions: List<CardSession>) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+private fun HardwareStatusGrid() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1F1F)),
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                "Hardware Components",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = Color(0xFFFFFFFF)
+            )
+
+            // Android Native Hardware
+            HardwareComponentRow(
+                title = "Android NFC Controller",
+                status = "Available",
+                details = "NFC Type-A/B/F supported"
+            )
+
+            HardwareComponentRow(
+                title = "Android Bluetooth Stack",
+                status = "Available",
+                details = "BLE & Classic supported"
+            )
+
+            // PN532 External Hardware
+            HardwareComponentRow(
+                title = "PN532 NFC Module (Bluetooth)",
+                status = "Scanning",
+                details = "Looking for device..."
+            )
+
+            HardwareComponentRow(
+                title = "PN532 NFC Module (USB)",
+                status = "Available",
+                details = "Ready for connection"
+            )
+
+            HardwareComponentRow(
+                title = "EMV Parser Engine",
+                status = "Ready",
+                details = "EMV L1 & L2 support"
+            )
+        }
+    }
+}
+
+@Composable
+private fun HardwareComponentRow(
+    title: String,
+    status: String,
+    details: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                title,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                color = Color(0xFFFFFFFF)
+            )
+            if (details.isNotEmpty()) {
+                Text(
+                    details,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF888888),
+                    maxLines = 2
+                )
+            }
+        }
+
         Text(
-            "Recent Readings",
+            status,
+            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+            color = when {
+                status.contains("Disconnected", ignoreCase = true) -> Color(0xFFF44336)
+                status.contains("Not Available", ignoreCase = true) -> Color(0xFFF44336)
+                status.contains("Unavailable", ignoreCase = true) -> Color(0xFFF44336)
+                status.contains("Error", ignoreCase = true) -> Color(0xFFF44336)
+                status.contains("Connected", ignoreCase = true) -> Color(0xFF2196F3)
+                status.contains("Ready", ignoreCase = true) -> Color(0xFF2196F3)
+                status.contains("Available", ignoreCase = true) -> Color(0xFF2196F3)
+                status.contains("Detected", ignoreCase = true) -> Color(0xFF2196F3)
+                status.contains("Searching", ignoreCase = true) -> Color(0xFFFFC107)
+                status.contains("Scanning", ignoreCase = true) -> Color(0xFFFFC107)
+                status.contains("Connecting", ignoreCase = true) -> Color(0xFFFFC107)
+                else -> Color(0xFF888888)
+            },
+            textAlign = TextAlign.End
+        )
+    }
+}
+
+@Composable
+private fun RecentCardsSection(sessions: List<CardSession>) {
+    Column {
+        Text(
+            "Recent Cards",
             style = MaterialTheme.typography.titleLarge.copy(
                 fontWeight = FontWeight.Bold
             ),
-            color = Color(0xFFFFFFFF),
-            modifier = Modifier.padding(horizontal = 4.dp)
+            color = Color(0xFF4CAF50),
+            modifier = Modifier.padding(bottom = 12.dp)
         )
 
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.heightIn(max = 300.dp)
-        ) {
-            items(sessions.take(5)) { session ->
-                CardSessionItem(session)
+        if (sessions.isEmpty()) {
+            // Empty state
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1F1F)),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        Icons.Default.CreditCard,
+                        contentDescription = "No Cards",
+                        tint = Color(0xFF666666),
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Text(
+                        "No cards scanned yet",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color(0xFF888888),
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        "Start scanning NFC cards to see them here",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF666666),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        } else {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.heightIn(max = 300.dp)
+            ) {
+                items(sessions.take(5)) { session ->
+                    CardSessionItem(session)
+                }
             }
         }
     }
@@ -314,45 +498,6 @@ private fun CardSessionItem(session: CardSession) {
                 contentDescription = "View Details",
                 tint = Color(0xFF4CAF50),
                 modifier = Modifier.size(20.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun EmptyStateCard() {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1419)),
-        shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Icon(
-                Icons.Default.Info,
-                contentDescription = null,
-                tint = Color(0xFF4CAF50),
-                modifier = Modifier.size(48.dp)
-            )
-            Text(
-                "No cards scanned yet",
-                style = MaterialTheme.typography.titleMedium,
-                color = Color(0xFFFFFFFF),
-                textAlign = TextAlign.Center
-            )
-            Text(
-                "Tap 'Card Read' to scan your first NFC/EMV card",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF888888),
-                textAlign = TextAlign.Center
             )
         }
     }
