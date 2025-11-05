@@ -222,7 +222,10 @@ Methods found:
 - loadProducts(): Unit                         ← No parameters, returns Unit
 - refreshProducts(): Unit
 - searchProducts(query: String): Unit          ← String parameter, not String?
+ok now lets do our another scope, when i give you a scope you make sure you run this through our 10 step rules. Also I want you to add the generated workflow from the various steps (like code gen and the other steps) to our VSCodes internal TODO list so it displays and update the TODO list as you go with checkmarks and so on.
 
+Scope:
+- Ok now for the next module i want it to be a debug/logger for internal/debug pruposes, lets call this module 'mod-main-debug.kt'. This module main function will be called debugLog().  THis module will not only provide us a debug manager for you, yes you AI, to be able to fully debug program operations autonomosly.  I will have phone connected via ADB for you so code gen it well so you can cantrol program and be able to send raw apdus to the devices when needed.  This will also produce a log file (JSON) and will make it easier to see the programs flow and fully debug.  Fully integrate this module with our modules and UI files as needed. I Would like to update all modules and UI files to use this new logger/debug module so we can interact with app fully at debug.
 No enums in this class.
 ```
 
@@ -286,13 +289,35 @@ Rules:
 // Typing from memory, guessing
 val items = viewModel.items.collectAsState()  // Wrong! It's "products" not "items"
 Text(product.cost)                            // Wrong! It's "price" not "cost", and needs .toString()
+
+// HARDCODED DATA - NEVER DO THIS
+HardwareComponentRow(
+    title = "PN532 NFC Module (USB)",
+    status = "Available",                     // ❌ HARDCODED - Not real data!
+    details = "Ready for connection"
+)
 ```
+
+**CRITICAL RULE - NO HARDCODED DATA:**
+- ❌ NEVER hardcode status strings like "Available", "Ready", "Connected"  
+- ❌ NEVER use placeholder values that pretend to be real
+- ✅ ALWAYS bind to real data sources (StateFlow, LiveData, coroutines)
+- ✅ ALWAYS read actual device state, API responses, database queries
+- ✅ If data isn't available yet, show a loading state, not fake data
 
 **Correct Pattern:**
 ```kotlin
 // Referencing documentation from Step 4
 val products by viewModel.products.collectAsState()  // ✅ Exact name from Step 4
 Text("${product.price}")                             // ✅ Exact name + explicit conversion from Step 5
+
+// REAL DATA - Always use actual state
+val pn532Status by viewModel.pn532UsbStatus.collectAsState(initial = "Initializing")
+HardwareComponentRow(
+    title = "PN532 NFC Module (USB)",
+    status = pn532Status,                     // ✅ Real data from ViewModel
+    details = "USB device state: $pn532Status"
+)
 ```
 
 ---
@@ -315,6 +340,9 @@ For generated code:
 □ No names used that weren't in documentation
 □ No assumptions about nullability
 □ No assumptions about types
+□ NO hardcoded status strings or mock data values
+□ ALL UI data bound to real sources (StateFlow, API, database, sensors)
+□ Loading states used when data not yet available
 ```
 
 ---
@@ -384,7 +412,10 @@ adb shell am start -n com.nfsp00fpro.app/.MainActivity
 If new implementation fully replaces old:
 □ Delete old provider file (if unused)
 □ Remove @Deprecated markers (if migration complete)
-□ Update documentation
+□ Update documentationok now lets do our another scope, when i give you a scope you make sure you run this through our 10 step rules. Also I want you to add the generated workflow from the various steps (like code gen and the other steps) to our VSCodes internal TODO list so it displays and update the TODO list as you go with checkmarks and so on.
+
+Scope:
+- Ok now for the next module i want it to be a debug/logger for internal/debug pruposes, lets call this module 'mod-main-debug.kt'. This module main function will be called debugLog().  THis module will not only provide us a debug manager for you, yes you AI, to be able to fully debug program operations autonomosly.  I will have phone connected via ADB for you so code gen it well so you can cantrol program and be able to send raw apdus to the devices when needed.  This will also produce a log file (JSON) and will make it easier to see the programs flow and fully debug.  Fully integrate this module with our modules and UI files as needed. I Would like to update all modules and UI files to use this new logger/debug module so we can interact with app fully at debug.
 □ Remove any migration TODOs
 ```
 
@@ -612,6 +643,11 @@ RIPPLE EFFECT ANALYSIS:
 SCOPE-SPECIFIC (Compose UI):
 14. [ ] Have I CHECKED scope rules for remember{} states?
 15. [ ] Have I VALIDATED all Compose APIs I'll use?
+
+DATA BINDING & REAL DATA:
+16. [ ] Will ALL UI data come from real sources (StateFlow, API, database, sensors)?
+17. [ ] Will I use ZERO hardcoded mock values or fake data?
+18. [ ] Are loading/error states defined for when data isn't available?
 ```
 
 **If ANY answer is NO → STOP and complete that step first.**
@@ -635,7 +671,10 @@ PROVIDER VERIFICATION:
 8. [ ] Are all type conversions explicit?
 
 CONSUMER VERIFICATION:
-9. [ ] If ripple effect identified: Have I updated ALL consumers?
+9. [ ] If ripple effect identified: Have I updated ALL consumers?ok now lets do our another scope, when i give you a scope you make sure you run this through our 10 step rules. Also I want you to add the generated workflow from the various steps (like code gen and the other steps) to our VSCodes internal TODO list so it displays and update the TODO list as you go with checkmarks and so on.
+
+Scope:
+- Ok now for the next module i want it to be a debug/logger for internal/debug pruposes, lets call this module 'mod-main-debug.kt'. This module main function will be called debugLog().  THis module will not only provide us a debug manager for you, yes you AI, to be able to fully debug program operations autonomosly.  I will have phone connected via ADB for you so code gen it well so you can cantrol program and be able to send raw apdus to the devices when needed.  This will also produce a log file (JSON) and will make it easier to see the programs flow and fully debug.  Fully integrate this module with our modules and UI files as needed. I Would like to update all modules and UI files to use this new logger/debug module so we can interact with app fully at debug.
 10. [ ] If ripple effect identified: Does code still compile with consumers?
 11. [ ] If ripple effect identified: Have I tested affected features?
 12. [ ] If ripple effect identified: Have I removed old code (if applicable)?
