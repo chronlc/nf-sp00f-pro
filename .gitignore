@@ -1,85 +1,77 @@
 # ============================================================================
-# BUILD & IDE
+# BUILD & INFRASTRUCTURE (NOT FOR GITHUB)
 # ============================================================================
 
-# Gradle
+# Gradle infrastructure
+gradle-8.5/
+gradle/
 .gradle/
+gradlew
+gradlew.bat
+
+# Build outputs
 build/
+out/
 *.gradle.kts.bak
 *.gradle.bak
-gradle-app.setting
-gradlew.bat
+
+# ============================================================================
+# IDE & WORKSPACE (NOT FOR GITHUB)
+# ============================================================================
 
 # Android Studio / IntelliJ IDEA
 .idea/
 *.iml
 *.iws
 *.ipr
-*.apk
-*.ap_
-*.class
-*.aar
-*.dex
+*.code-workspace
 
 # VS Code
 .vscode/
-*.code-workspace
 *.swp
 *.swo
 *~
 
-# Android Emulator / Device
+# ============================================================================
+# DOCUMENTATION & INSTRUCTIONS (NOT FOR GITHUB)
+# ============================================================================
+
+# Process and AI files
+.github/instructions/
+docs/
+emv_apdu_workflow.md
+emv_tag_database.md
+CHANGELOG.md
+README.md
+
+# Temporary workspace files
+/asd
+/tmp/
+/temp/
+
+# ============================================================================
+# BUILD OUTPUTS (NOT FOR GITHUB)
+# ============================================================================
+
+# Compiled outputs
+*.apk
+*.aab
+*.ap_
+*.class
+*.dex
+*.o
+*.so
+bin/
+gen/
 local.properties
 captures/
 .externalNativeBuild/
 .cxx/
 
 # ============================================================================
-# BUILD OUTPUTS
+# SYSTEM & OS FILES
 # ============================================================================
 
-# Compiled outputs
-bin/
-gen/
-out/
-*.o
-*.so
-
-# Android specific
-.DS_Store
-*.apk
-*.aab
-*.ap_
-
-# ============================================================================
-# DEVELOPMENT & WORKSPACE
-# ============================================================================
-
-# Documentation (as per your preference)
-/docs/*
-!/docs/.gitkeep
-
-# Temporary files
-/tmp/*
-!/tmp/.gitkeep
-/temp/
-/temp_*
-
-# Node modules (if you use any JS/TS tooling)
-node_modules/
-npm-debug.log
-yarn-error.log
-
-# Python cache (if you use any Python scripts)
-__pycache__/
-*.py[cod]
-*.egg-info/
-
-# ============================================================================
-# SYSTEM & ENVIRONMENT
-# ============================================================================
-
-# OS specific
 .DS_Store
 .DS_Store?
 ._*
@@ -87,21 +79,13 @@ __pycache__/
 .Trashes
 ehthumbs.db
 Thumbs.db
-
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# IDE workspace settings
-*.sublime-workspace
-*.sublime-project
+*.log
+logs/
 
 # ============================================================================
-# CREDENTIALS & SECRETS
+# SECRETS & CREDENTIALS
 # ============================================================================
 
-# API keys and credentials
 secrets.properties
 keystore/
 *.keystore
@@ -109,127 +93,59 @@ keystore/
 credentials.json
 google-services.json
 firebase.json
-
-# Private configuration
-local.properties
 signing.properties
+.env
+.env.local
 
 # ============================================================================
-# ANDROID SPECIFIC
+# TESTING & COVERAGE
 # ============================================================================
 
-# Android resources
-res/values/google-services.xml
-res/values/firebase.xml
-
-# ProGuard mapping
-proguard/
-proguard-rules.pro.bak
-mapping.txt
-seeds.txt
-usage.txt
-config.txt
-
-# Lint reports
-lint-results.xml
-lint-results-*.xml
-lint-baseline.xml
-
-# ============================================================================
-# TESTING
-# ============================================================================
-
-# Test outputs
 coverage/
 jacoco/
-*.coverage
-.coverage
-.pytest_cache/
-
-# Test reports
 test-results/
 test-reports/
-*.test
+*.coverage
+.pytest_cache/
 
 # ============================================================================
-# LOGS
+# LARGE FILES
 # ============================================================================
 
-# Log files
-*.log
-logs/
-logcat.log
-
-# ============================================================================
-# PROJECT SPECIFIC EXCLUSIONS
-# ============================================================================
-
-# Keep important directories but ignore contents
-!/docs/.gitkeep
-!/tmp/.gitkeep
-
-# Backup files
-*.bak
-*.backup
-*.orig
-*.rej
-
-# Compiled files
-*.jar
-*.war
-*.ear
-
-# ============================================================================
-# DONT COMMIT THESE EVER
-# ============================================================================
-
-# Large binary files
 *.zip
 *.tar.gz
 *.tar
 *.rar
 *.7z
-
-# Video/Audio files
 *.mp4
 *.avi
 *.mov
 *.mp3
 *.wav
-
-# Database files
 *.db
 *.sqlite
 *.sqlite3
-
-# Compiled native code
-*.so
-*.dylib
-*.dll
+node_modules/
+__pycache__/
 
 # ============================================================================
-# ALLOW THESE (negate rules)
+# BACKUP & TEMP FILES
 # ============================================================================
 
-# Gradle wrapper should be committed
-!gradle/wrapper/gradle-wrapper.jar
-!gradle/wrapper/gradle-wrapper.properties
-!gradlew
-!gradlew.bat
+*.bak
+*.backup
+*.orig
+*.rej
+~*
+*~
 
-# Build files should be committed
+# ============================================================================
+# ALLOW ANDROID APP CODE ONLY
+# ============================================================================
+
+# Keep only Android app source, resources, and gradle config
+!/nf-sp00f-pro/
 !build.gradle.kts
 !settings.gradle.kts
-
-# Resource files should be committed
-!src/
-!res/
-!**/res/
-
-# Documentation should be committed (specific files)
-!docs/README.md
-!docs/STEP-*.md
-!docs/API-Definition-Reference.md
-!docs/COMPLETION-REPORT.md
-!docs/CHANGELOG.md
-!docs/SCOPE-*.md
+!.gitignore
+!.github/.gitkeep
