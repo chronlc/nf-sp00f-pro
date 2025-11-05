@@ -422,10 +422,10 @@ class EmvReader(private val context: Context) {
             val command = mutableListOf<Byte>()
             command.add(CLA_PROPRIETARY) // CLA: 80
             command.add(INS_GPO) // INS: A8
-            command.add(0x00) // P1
-            command.add(0x00) // P2
+            command.add(0x00.toByte()) // P1
+            command.add(0x00.toByte()) // P2
             command.add((pdolData.size + 2).toByte()) // Lc = PDOL data + 2 for tag/length
-            command.add(0x83) // Command template tag
+            command.add(0x83.toByte()) // Command template tag
             command.add(pdolData.size.toByte()) // PDOL data length
             command.addAll(pdolData.toList()) // PDOL data
             command.add(0x00) // Le (required for contactless)
