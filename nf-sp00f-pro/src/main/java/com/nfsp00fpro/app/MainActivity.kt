@@ -20,6 +20,7 @@ import androidx.core.view.WindowCompat
 import com.nfsp00fpro.app.modules.ModMainNfsp00f
 import com.nfsp00fpro.app.screens.DashboardScreen
 import com.nfsp00fpro.app.screens.SplashScreen
+import com.nfsp00fpro.app.ui.NfSp00fIcons
 
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
@@ -71,8 +72,7 @@ fun NfSp00fProApp() {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            Icons.Default.Security,
+                        NfSp00fIcons.Security(
                             contentDescription = "Security",
                             tint = Color(0xFF4CAF50)
                         )
@@ -95,40 +95,105 @@ fun NfSp00fProApp() {
         },
         bottomBar = {
             NavigationBar(containerColor = Color.Black) {
-                val items = listOf(
-                    "Dashboard" to Icons.Default.Dashboard,
-                    "Card Read" to Icons.Default.Nfc,
-                    "Database" to Icons.Default.Storage,
-                    "Debug" to Icons.Default.BugReport
+                NavigationBarItem(
+                    icon = {
+                        NfSp00fIcons.Dashboard(
+                            contentDescription = "Dashboard",
+                            tint = if (selectedTab == 0) Color(0xFF4CAF50) else Color(0xFF4CAF50).copy(alpha = 0.6f)
+                        )
+                    },
+                    label = { 
+                        Text(
+                            "Dashboard",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (selectedTab == 0) Color(0xFF4CAF50) else Color(0xFF4CAF50).copy(alpha = 0.6f)
+                        ) 
+                    },
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = Color(0xFF4CAF50),
+                        selectedTextColor = Color(0xFF4CAF50),
+                        unselectedIconColor = Color(0xFF4CAF50).copy(alpha = 0.6f),
+                        unselectedTextColor = Color(0xFF4CAF50).copy(alpha = 0.6f),
+                        indicatorColor = Color.Transparent
+                    )
                 )
 
-                items.forEachIndexed { index, (label, icon) ->
-                    NavigationBarItem(
-                        icon = {
-                            Icon(
-                                icon,
-                                contentDescription = label,
-                                tint = if (selectedTab == index) Color(0xFF4CAF50) else Color(0xFF4CAF50).copy(alpha = 0.6f)
-                            )
-                        },
-                        label = { 
-                            Text(
-                                label,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (selectedTab == index) Color(0xFF4CAF50) else Color(0xFF4CAF50).copy(alpha = 0.6f)
-                            ) 
-                        },
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color(0xFF4CAF50),
-                            selectedTextColor = Color(0xFF4CAF50),
-                            unselectedIconColor = Color(0xFF4CAF50).copy(alpha = 0.6f),
-                            unselectedTextColor = Color(0xFF4CAF50).copy(alpha = 0.6f),
-                            indicatorColor = Color.Transparent
+                NavigationBarItem(
+                    icon = {
+                        NfSp00fIcons.Nfc(
+                            contentDescription = "Card Read",
+                            tint = if (selectedTab == 1) Color(0xFF4CAF50) else Color(0xFF4CAF50).copy(alpha = 0.6f)
                         )
+                    },
+                    label = { 
+                        Text(
+                            "Card Read",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (selectedTab == 1) Color(0xFF4CAF50) else Color(0xFF4CAF50).copy(alpha = 0.6f)
+                        ) 
+                    },
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = Color(0xFF4CAF50),
+                        selectedTextColor = Color(0xFF4CAF50),
+                        unselectedIconColor = Color(0xFF4CAF50).copy(alpha = 0.6f),
+                        unselectedTextColor = Color(0xFF4CAF50).copy(alpha = 0.6f),
+                        indicatorColor = Color.Transparent
                     )
-                }
+                )
+
+                NavigationBarItem(
+                    icon = {
+                        NfSp00fIcons.Storage(
+                            contentDescription = "Database",
+                            tint = if (selectedTab == 2) Color(0xFF4CAF50) else Color(0xFF4CAF50).copy(alpha = 0.6f)
+                        )
+                    },
+                    label = { 
+                        Text(
+                            "Database",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (selectedTab == 2) Color(0xFF4CAF50) else Color(0xFF4CAF50).copy(alpha = 0.6f)
+                        ) 
+                    },
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = Color(0xFF4CAF50),
+                        selectedTextColor = Color(0xFF4CAF50),
+                        unselectedIconColor = Color(0xFF4CAF50).copy(alpha = 0.6f),
+                        unselectedTextColor = Color(0xFF4CAF50).copy(alpha = 0.6f),
+                        indicatorColor = Color.Transparent
+                    )
+                )
+
+                NavigationBarItem(
+                    icon = {
+                        NfSp00fIcons.Analytics(
+                            contentDescription = "Debug",
+                            tint = if (selectedTab == 3) Color(0xFF4CAF50) else Color(0xFF4CAF50).copy(alpha = 0.6f)
+                        )
+                    },
+                    label = { 
+                        Text(
+                            "Debug",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (selectedTab == 3) Color(0xFF4CAF50) else Color(0xFF4CAF50).copy(alpha = 0.6f)
+                        ) 
+                    },
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = Color(0xFF4CAF50),
+                        selectedTextColor = Color(0xFF4CAF50),
+                        unselectedIconColor = Color(0xFF4CAF50).copy(alpha = 0.6f),
+                        unselectedTextColor = Color(0xFF4CAF50).copy(alpha = 0.6f),
+                        indicatorColor = Color.Transparent
+                    )
+                )
             }
         },
         containerColor = Color(0xFF0A0A0A)
