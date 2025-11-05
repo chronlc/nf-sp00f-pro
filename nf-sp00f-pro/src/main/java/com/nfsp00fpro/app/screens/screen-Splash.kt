@@ -3,8 +3,6 @@ package com.nfsp00fpro.app.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,30 +38,29 @@ fun SplashScreen(onNavigateToDashboard: () -> Unit) {
             .background(Color(0xFF0A0A0A)),
         contentAlignment = Alignment.Center
     ) {
-        // Background image (subtle, full screen with low opacity)
+        // Background image
         Image(
             painter = painterResource(id = R.drawable.nfspoof3),
             contentDescription = "Background",
-            modifier = Modifier
-                .fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
-            alpha = 0.08f
+            alpha = 0.15f
         )
 
-        // Centered Card
-        Card(
+        Column(
             modifier = Modifier
-                .width(280.dp)
-                .wrapContentHeight(),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF121717)),
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                .wrapContentWidth()
+                .wrapContentHeight()
+                .padding(28.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(32.dp),
-                verticalArrangement = Arrangement.Center,
+                    .wrapContentWidth()
+                    .wrapContentHeight()
+                    .padding(28.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Logo Image
@@ -71,8 +68,8 @@ fun SplashScreen(onNavigateToDashboard: () -> Unit) {
                     painter = painterResource(id = R.drawable.nfspoof3),
                     contentDescription = "nf-sp00f-pro Logo",
                     modifier = Modifier
-                        .size(120.dp)
-                        .padding(bottom = 24.dp),
+                        .size(100.dp)
+                        .padding(bottom = 16.dp),
                     contentScale = ContentScale.Fit
                 )
 
@@ -84,7 +81,7 @@ fun SplashScreen(onNavigateToDashboard: () -> Unit) {
                     ),
                     color = Color(0xFF4CAF50),
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 4.dp)
                 )
 
                 // Subtitle
@@ -95,15 +92,15 @@ fun SplashScreen(onNavigateToDashboard: () -> Unit) {
                     ),
                     color = Color(0xFFFFFFFF),
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 28.dp)
+                    modifier = Modifier.padding(bottom = 20.dp)
                 )
 
                 // Loading Indicator
                 CircularProgressIndicator(
                     color = Color(0xFF4CAF50),
                     modifier = Modifier
-                        .size(40.dp)
-                        .padding(bottom = 16.dp),
+                        .size(36.dp)
+                        .padding(bottom = 12.dp),
                     strokeWidth = 3.dp
                 )
 
