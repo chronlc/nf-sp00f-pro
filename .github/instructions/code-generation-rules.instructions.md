@@ -872,20 +872,10 @@ git diff --cached
 
 3. Commit with clear message:
 ```bash
-git commit -m "[SCOPE-N] Feature/Fix: Brief description
+git commit -m "[SCOPE] Brief description
 
-Files Changed:
-- src/main/java/.../filename.kt (change summary)
-- src/main/java/.../anotherfile.kt (change summary)
-
-Build Status: ✅ Success
-Test Status: ✅ All tests passing
-Warnings: 0
-
-Details:
-- Root cause: [if bug fix, explain the root cause]
-- Impact: [explain what this change does]
-- Breaking changes: [none, or list them]"
+- File 1: Change summary
+- File 2: Change summary"
 ```
 
 4. Verify commit:
@@ -893,31 +883,22 @@ Details:
 git log -1 --stat
 ```
 
-**Commit Message Requirements:**
-- ✅ Include scope identifier: `[SCOPE-N]` or `[FEATURE]` or `[BUG-FIX]`
-- ✅ Brief one-line description of change
-- ✅ List ALL files modified with summaries
-- ✅ Include Build Status: ✅ Success
-- ✅ Include Test Status: ✅ All passing (or specify failures resolved)
-- ✅ Include warning count (should be 0)
-- ✅ Reference root cause if bug fix
-- ✅ Document any breaking changes
+**Commit Message Requirements (Minimal & Professional):**
+- ✅ Scope: `[SCOPE-N]`, `[FEATURE]`, or `[BUG-FIX]`
+- ✅ Brief one-line description
+- ✅ List changed files with concise summaries
 
 **Pre-Commit Checklist:**
 - ✅ Code compiles with zero errors
 - ✅ Zero build warnings
-- ✅ All tests passing
 - ✅ All consumers updated (if ripple effect)
 - ✅ CHANGELOG.md updated
-- ✅ Code review complete
-- ✅ Root cause documented (if bug fix)
 
-**Post-Commit Actions (Mandatory):**
+**Post-Commit Actions:**
 ```bash
-# View commit details
 git log -1
-
-# Push to remote
+git push origin master
+```
 git push origin master
 ```
 
@@ -1039,42 +1020,33 @@ DATA BINDING & REAL DATA:
 ```
 
 **If ANY answer is NO → STOP and complete that step first.**
-
 ### Self-Check After Generation:
 ```
-Before I declare task COMPLETE, I must answer YES to ALL:
+Before declaring task COMPLETE, answer YES to ALL:
 
-TODO LIST:
-1. [ ] Have I marked all intermediate tasks as completed?
-2. [ ] Will I mark the final task as completed before finishing?
+NAMING:
+□ All naming follows established conventions
+□ No naming violations in new code
+□ Consumer updates follow naming schemes
 
-NAMING COMPLIANCE:
-3. [ ] Does generated code follow ALL naming conventions?
-4. [ ] Are there ANY naming violations in new code?
-5. [ ] Do all consumer updates follow naming schemes?
+BUILD & VALIDATION:
+□ Code compiles (BUILD SUCCESSFUL)
+□ All names/types validated against documentation
+□ Type conversions explicit and documented
 
-PROVIDER VERIFICATION:
-6. [ ] Does the generated code compile (BUILD SUCCESSFUL)?
-7. [ ] Have I validated all names/types against documentation?
-8. [ ] Are all type conversions explicit?
+CONSUMERS:
+□ All consumers updated (if ripple effect)
+□ Code still compiles with consumers
+□ Affected features tested
 
-CONSUMER VERIFICATION:
-9. [ ] If ripple effect identified: Have I updated ALL consumers?ok now lets do our another scope, when i give you a scope you make sure you run this through our 10 step rules. Also I want you to add the generated workflow from the various steps (like code gen and the other steps) to our VSCodes internal TODO list so it displays and update the TODO list as you go with checkmarks and so on.
-
-Scope:
-- Ok now for the next module i want it to be a debug/logger for internal/debug pruposes, lets call this module 'mod-main-debug.kt'. This module main function will be called debugLog().  THis module will not only provide us a debug manager for you, yes you AI, to be able to fully debug program operations autonomosly.  I will have phone connected via ADB for you so code gen it well so you can cantrol program and be able to send raw apdus to the devices when needed.  This will also produce a log file (JSON) and will make it easier to see the programs flow and fully debug.  Fully integrate this module with our modules and UI files as needed. I Would like to update all modules and UI files to use this new logger/debug module so we can interact with app fully at debug.
-10. [ ] If ripple effect identified: Does code still compile with consumers?
-11. [ ] If ripple effect identified: Have I tested affected features?
-12. [ ] If ripple effect identified: Have I removed old code (if applicable)?
-
-GIT & MEMORY:
-13. [ ] Have I committed all changes with proper message?
-14. [ ] Have I pushed to remote (git push origin master)?
-15. [ ] Have I updated the remember MCP with task completion?
+GIT:
+□ Changes committed with proper message
+□ Changes pushed to remote
+□ Workspace memory updated
 
 COMPLETION:
-16. [ ] Is there ANY broken code left behind?
-17. [ ] Is there ANY TODO related to this change?
+□ No broken code left behind
+□ No outstanding TODOs related to this change
 18. [ ] Can I honestly say this task is 100% COMPLETE?
 ```
 
