@@ -82,7 +82,7 @@ fun NfSp00fProApp() {
                         )
                         Column {
                             Text(
-                                "NFC PhreaK BoX",
+                                "nf-sp00f-pro",
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF4CAF50)
                             )
