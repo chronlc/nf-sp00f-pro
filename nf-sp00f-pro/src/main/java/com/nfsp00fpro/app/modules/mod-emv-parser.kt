@@ -57,11 +57,21 @@ class EmvParser {
         val allTags = mutableListOf<TlvTag>()
         var offset = 0
 
+        ModMainDebug.debugLog("EmvParser", "parsing_start", mapOf(
+            "data_length" to data.size,
+            "session_id" to (sessionId ?: "unknown") as Any
+        ))
+
         while (offset < data.size) {
             try {
                 val tagParseResult = parseTagAt(data, offset)
                 if (tagParseResult == null) {
                     logStatus("⚠ Failed to parse tag at offset $offset")
+                    ModMainDebug.debugLog("EmvParser", "parsing_warning", mapOf(
+                        "reason" to "failed_to_parse_tag",
+                        "offset" to offset,
+                        "session_id" to (sessionId ?: "unknown") as Any
+                    ))
                     break
                 }
 
@@ -76,6 +86,12 @@ class EmvParser {
                 offset = nextOffset
             } catch (e: Exception) {
                 logStatus("✗ Parse error at offset $offset: ${e.message}")
+                ModMainDebug.debugLog("EmvParser", "parsing_error", mapOf(
+                    "reason" to "parse_exception",
+                    "offset" to offset,
+                    "error" to (e.message ?: "Unknown error") as Any,
+                    "session_id" to (sessionId ?: "unknown") as Any
+                ))
                 break
             }
         }
@@ -85,6 +101,11 @@ class EmvParser {
             parserScope.launch {
                 database.saveTlvTagBatch(allTags)
                 logStatus("✓ Batch saved ${allTags.size} TLV tags to database")
+                ModMainDebug.debugLog("EmvParser", "parsing_complete", mapOf(
+                    "tags_parsed" to tagMap.size,
+                    "tlv_tags_saved" to allTags.size,
+                    "session_id" to (sessionId ?: "unknown") as Any
+                ))
             }
         }
 

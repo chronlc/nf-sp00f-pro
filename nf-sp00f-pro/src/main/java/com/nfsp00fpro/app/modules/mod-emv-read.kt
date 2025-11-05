@@ -116,8 +116,16 @@ class EmvReader(private val context: Context) {
 
             isInitialized = true
             logStatus("✓ EMV reader initialized")
+            ModMainDebug.debugLog("EmvReader", "initialize_complete", mapOf(
+                "pn532_available" to (pn532Module != null),
+                "androidnfc_available" to (androidNfcModule != null),
+                "database_initialized" to (database != null)
+            ))
         } catch (e: Exception) {
             logStatus("✗ EMV reader initialization failed: ${e.message}")
+            ModMainDebug.debugLog("EmvReader", "initialize_error", mapOf(
+                "error" to (e.message ?: "Unknown error") as Any
+            ))
         }
     }
 
@@ -140,17 +148,27 @@ class EmvReader(private val context: Context) {
     fun emvReader(isContactless: Boolean = true): Map<String, ByteArray> {
         if (!isInitialized) {
             logStatus("✗ EMV reader not initialized")
+            ModMainDebug.debugLog("EmvReader", "emv_reader_not_initialized", null)
             return emptyMap()
         }
 
         val cardData = mutableMapOf<String, ByteArray>()
 
         try {
+            ModMainDebug.debugLog("EmvReader", "emv_scan_start", mapOf(
+                "contactless" to isContactless,
+                "timestamp" to System.currentTimeMillis()
+            ))
+
             // Create new session (blocking call to get sessionId)
             currentSessionId = runBlocking {
                 database?.createSession(isContactless) ?: UUID.randomUUID().toString()
             }
             logStatus("✓ Session created: $currentSessionId")
+            ModMainDebug.debugLog("EmvReader", "session_created", mapOf(
+                "session_id" to (currentSessionId ?: "unknown") as Any,
+                "contactless" to isContactless
+            ))
 
             // Phase 2: Select PPSE/PSE
             val ppseCommand = if (isContactless) {
@@ -263,9 +281,21 @@ class EmvReader(private val context: Context) {
 
             logStatus("✓ EMV read completed successfully")
             updateSessionStatus("SUCCESS")
+            ModMainDebug.debugLog("EmvReader", "emv_scan_complete", mapOf(
+                "session_id" to (currentSessionId ?: "unknown") as Any,
+                "status" to "success",
+                "card_data_items" to cardData.size,
+                "timestamp" to System.currentTimeMillis()
+            ))
         } catch (e: Exception) {
             logStatus("✗ EMV reader error: ${e.message}")
             updateSessionStatus("FAILED")
+            ModMainDebug.debugLog("EmvReader", "emv_scan_error", mapOf(
+                "session_id" to (currentSessionId ?: "unknown") as Any,
+                "error" to (e.message ?: "Unknown error") as Any,
+                "card_data_items" to cardData.size,
+                "timestamp" to System.currentTimeMillis()
+            ))
         }
 
         return cardData
@@ -295,21 +325,51 @@ class EmvReader(private val context: Context) {
      */
     private fun sendApdu(command: ByteArray): ByteArray? {
         return try {
+            // Log APDU command
+            ModMainDebug.debugLog("EmvReader", "apdu_send_start", mapOf(
+                "command_length" to command.size,
+                "session_id" to (currentSessionId ?: "unknown") as Any
+            ))
+
             // Try NFC first
             val nfcResponse = androidNfcModule?.transceiveNfcA(command)
             if (nfcResponse != null) {
+                // Log successful NFC response
+                ModMainDebug.logApdu(command, nfcResponse, "EmvReader")
+                ModMainDebug.debugLog("EmvReader", "apdu_response_nfc", mapOf(
+                    "response_length" to nfcResponse.size,
+                    "session_id" to (currentSessionId ?: "unknown") as Any
+                ))
                 return nfcResponse
             }
 
             // Fall back to PN532 Bluetooth
             val btSuccess = pn532Module?.sendBluetoothData(command)
             if (btSuccess == true) {
-                return pn532Module?.receiveBluetoothData(1024)
+                val btResponse = pn532Module?.receiveBluetoothData(1024)
+                if (btResponse != null) {
+                    // Log successful Bluetooth response
+                    ModMainDebug.logApdu(command, btResponse, "EmvReader")
+                    ModMainDebug.debugLog("EmvReader", "apdu_response_bluetooth", mapOf(
+                        "response_length" to btResponse.size,
+                        "session_id" to (currentSessionId ?: "unknown") as Any
+                    ))
+                    return btResponse
+                }
             }
 
+            // No response
+            ModMainDebug.debugLog("EmvReader", "apdu_no_response", mapOf(
+                "command_length" to command.size,
+                "session_id" to (currentSessionId ?: "unknown") as Any
+            ))
             null
         } catch (e: Exception) {
             logStatus("✗ APDU send failed: ${e.message}")
+            ModMainDebug.debugLog("EmvReader", "apdu_error", mapOf(
+                "error" to (e.message ?: "Unknown error") as Any,
+                "session_id" to (currentSessionId ?: "unknown") as Any
+            ))
             null
         }
     }

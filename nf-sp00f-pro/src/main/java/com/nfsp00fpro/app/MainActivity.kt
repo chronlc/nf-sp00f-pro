@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import com.nfsp00fpro.app.modules.ModMainNfsp00f
+import com.nfsp00fpro.app.modules.ModMainDebug
 import com.nfsp00fpro.app.screens.DashboardScreen
 import com.nfsp00fpro.app.screens.SplashScreen
 import com.nfsp00fpro.app.ui.NfSp00fIcons
@@ -35,6 +36,9 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = android.graphics.Color.BLACK
         window.navigationBarColor = android.graphics.Color.BLACK
+        
+        // Initialize debug logger
+        ModMainDebug.initialize(this)
         
         // Initialize module manager
         moduleManager = ModMainNfsp00f(this)

@@ -57,9 +57,14 @@ class ModMainNfsp00f(private val context: Context) {
      */
     fun initialize() {
         try {
+            ModMainDebug.debugLog("ModMainNfsp00f", "initialize_start", mapOf(
+                "timestamp" to System.currentTimeMillis()
+            ))
+
             // Initialize PN532 Module
             pn532Module = ModDevicePn532(context)
             pn532Module?.initialize()
+            ModMainDebug.debugLog("ModMainNfsp00f", "pn532_initialized", null)
 
             // Attempt auto-connect to PN532 Bluetooth
             moduleScope.launch {
@@ -69,26 +74,38 @@ class ModMainNfsp00f(private val context: Context) {
             // Initialize Android NFC Module
             androidNfcModule = ModDeviceAndroidNfc(context)
             androidNfcModule?.initialize()
+            ModMainDebug.debugLog("ModMainNfsp00f", "androidnfc_initialized", null)
 
             // Initialize EMV Parser Module
             emvParserModule = EmvParser()
             logStatus("✓ EMV Parser module initialized")
+            ModMainDebug.debugLog("ModMainNfsp00f", "emvparser_initialized", null)
 
             // Initialize EMV Reader Module
             emvReaderModule = EmvReader(context)
             emvReaderModule?.initialize()
+            ModMainDebug.debugLog("ModMainNfsp00f", "emvreader_initialized", null)
 
             // Initialize EMV Database Module
             emvDatabaseModule = EmvDatabase(context)
             logStatus("✓ EMV Database module initialized")
+            ModMainDebug.debugLog("ModMainNfsp00f", "emvdatabase_initialized", null)
 
             // Start health monitoring
             startHealthMonitoring()
 
             isInitialized = true
             logStatus("✓ All modules initialized successfully")
+            ModMainDebug.debugLog("ModMainNfsp00f", "initialize_complete", mapOf(
+                "all_modules_ready" to true,
+                "timestamp" to System.currentTimeMillis()
+            ))
         } catch (e: Exception) {
             logStatus("✗ Module initialization failed: ${e.message}")
+            ModMainDebug.debugLog("ModMainNfsp00f", "initialize_error", mapOf(
+                "error" to (e.message ?: "Unknown error") as Any,
+                "timestamp" to System.currentTimeMillis()
+            ))
         }
     }
 
@@ -102,14 +119,22 @@ class ModMainNfsp00f(private val context: Context) {
      */
     private fun attemptPn532BluetoothAutoConnect() {
         try {
+            ModMainDebug.debugLog("ModMainNfsp00f", "pn532_autoconnect_start", null)
+            
             val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
             if (bluetoothAdapter == null) {
                 logStatus("✗ Bluetooth adapter not available")
+                ModMainDebug.debugLog("ModMainNfsp00f", "pn532_autoconnect_error", mapOf(
+                    "reason" to "bluetooth_adapter_not_available"
+                ))
                 return
             }
 
             if (!bluetoothAdapter.isEnabled()) {
                 logStatus("⊘ Bluetooth is disabled, cannot auto-connect")
+                ModMainDebug.debugLog("ModMainNfsp00f", "pn532_autoconnect_error", mapOf(
+                    "reason" to "bluetooth_disabled"
+                ))
                 return
             }
 
@@ -117,16 +142,32 @@ class ModMainNfsp00f(private val context: Context) {
             val pn532Device = bluetoothAdapter.getRemoteDevice("00:14:03:05:5C:CB")
             if (pn532Device == null) {
                 logStatus("✗ PN532 device not found (MAC: 00:14:03:05:5C:CB)")
+                ModMainDebug.debugLog("ModMainNfsp00f", "pn532_autoconnect_error", mapOf(
+                    "reason" to "device_not_found",
+                    "mac_address" to "00:14:03:05:5C:CB"
+                ))
                 return
             }
 
             // Connect via PN532 module
             pn532Module?.connectBluetoothDevice(pn532Device)
             logStatus("✓ PN532 Bluetooth auto-connect initiated")
+            ModMainDebug.debugLog("ModMainNfsp00f", "pn532_autoconnect_success", mapOf(
+                "device_name" to (pn532Device.name ?: "Unknown") as Any,
+                "mac_address" to "00:14:03:05:5C:CB"
+            ))
         } catch (e: IllegalArgumentException) {
             logStatus("✗ Invalid MAC address format: ${e.message}")
+            ModMainDebug.debugLog("ModMainNfsp00f", "pn532_autoconnect_error", mapOf(
+                "reason" to "invalid_mac_address",
+                "error" to (e.message ?: "Unknown error") as Any
+            ))
         } catch (e: Exception) {
             logStatus("✗ PN532 auto-connect failed: ${e.message}")
+            ModMainDebug.debugLog("ModMainNfsp00f", "pn532_autoconnect_error", mapOf(
+                "reason" to "connection_failed",
+                "error" to (e.message ?: "Unknown error") as Any
+            ))
         }
     }
 
@@ -161,13 +202,22 @@ class ModMainNfsp00f(private val context: Context) {
      */
     private fun startHealthMonitoring() {
         moduleScope.launch {
+            ModMainDebug.debugLog("ModMainNfsp00f", "health_monitoring_start", null)
             while (isInitialized) {
                 val health = checkHealth()
                 health.forEach { (moduleName, status) ->
                     if (status.isHealthy) {
                         logStatus("✓ $moduleName: ${status.message}")
+                        ModMainDebug.debugLog("ModMainNfsp00f", "health_check_pass", mapOf(
+                            "module" to moduleName,
+                            "message" to status.message
+                        ))
                     } else {
                         logStatus("⚠ $moduleName: ${status.message}")
+                        ModMainDebug.debugLog("ModMainNfsp00f", "health_check_fail", mapOf(
+                            "module" to moduleName,
+                            "message" to status.message
+                        ))
                     }
                 }
                 kotlinx.coroutines.delay(healthCheckInterval)

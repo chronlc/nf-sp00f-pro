@@ -380,6 +380,11 @@ class EmvDatabase(private val context: Context) {
             status = "PENDING"
         )
         sessionDao.insertSession(session)
+        ModMainDebug.debugLog("EmvDatabase", "session_created", mapOf(
+            "session_id" to session.sessionId,
+            "contactless" to isContactless,
+            "timestamp" to System.currentTimeMillis()
+        ))
         return session.sessionId
     }
 

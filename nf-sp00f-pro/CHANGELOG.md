@@ -29,6 +29,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2025-11-05
+
+### Added
+- **mod-main-debug.kt** - Centralized debug/logger module
+  - In-memory circular logging buffer (500 entries max)
+  - Autonomous AI debugging with ADB integration
+  - JSON export functionality for session analysis
+  - APDU command/response logging with hex conversion
+  - Session tracking with unique ID + metadata
+  - Device info capture (manufacturer, model, Android version, SDK)
+  - Thread-safe coroutine-based logging
+  - Periodic auto-export (every 50 entries + on APDU)
+  - Raw APDU execution from AI commands via broadcast intent
+
+### Changed
+- **Gson dependency added** (v2.10.1)
+  - JSON serialization for debug log exports
+
+- **All modules integrated with centralized logging:**
+  - **mod-main-nfsp00f.kt** - Module init, health check, device connection logging
+  - **mod-emv-read.kt** - APDU execution, session creation, card scan workflow
+  - **mod-emv-parser.kt** - TLV tag parsing, batch save operations
+  - **mod-emv-database.kt** - Session and record creation
+  - **mod-device-pn532.kt** - Bluetooth connection lifecycle, data transmission
+  - **mod-device-androidnfc.kt** - NFC operations, transceive commands
+  - **MainActivity.kt** - Debug logger initialization on app startup
+
+### Build Status
+- ✅ BUILD SUCCESSFUL (15s, 0 errors, 0 warnings)
+- Full compilation with all logging integration
+- APK generated successfully for debug + release
+
+### Technical Details
+- Debug logging points: 80+ across all modules
+- APDU hex logging: All commands/responses captured
+- Session tracking: Unique ID + timestamps for correlation
+- Memory efficient: Circular buffer prevents unbounded growth
+- Thread-safe: Synchronized access via coroutines
+- JSON format: Pretty-printed for human readability
+- AI integration ready: Autonomous command execution via ADB
+
+### Testing & Verification
+- STEP 9 Consumer Integration: 100% complete (6 modules + 1 activity)
+- Self-validation: All type conversions and nullable safety checked
+- Build verification: Multi-pass compilation successful
+- Error handling: Null-safe logging throughout
+
+---
+
 ## [1.1.0] - 2025-10-20
 
 ### Added

@@ -68,18 +68,35 @@ class ModDevicePn532(private val context: Context) {
             bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
             if (bluetoothAdapter == null) {
                 logStatus("⚠ Bluetooth adapter not available")
+                ModMainDebug.debugLog("ModDevicePn532", "initialize_warning", mapOf(
+                    "reason" to "bluetooth_adapter_not_available"
+                ))
+            } else {
+                ModMainDebug.debugLog("ModDevicePn532", "bluetooth_adapter_found", null)
             }
 
             // Initialize USB
             usbManager = context.getSystemService(Context.USB_SERVICE) as? UsbManager
             if (usbManager == null) {
                 logStatus("⚠ USB manager not available")
+                ModMainDebug.debugLog("ModDevicePn532", "initialize_warning", mapOf(
+                    "reason" to "usb_manager_not_available"
+                ))
+            } else {
+                ModMainDebug.debugLog("ModDevicePn532", "usb_manager_found", null)
             }
 
             isInitialized = true
             logStatus("✓ PN532 module initialized")
+            ModMainDebug.debugLog("ModDevicePn532", "initialize_complete", mapOf(
+                "bluetooth_available" to (bluetoothAdapter != null),
+                "usb_available" to (usbManager != null)
+            ))
         } catch (e: Exception) {
             logStatus("✗ Initialization failed: ${e.message}")
+            ModMainDebug.debugLog("ModDevicePn532", "initialize_error", mapOf(
+                "error" to (e.message ?: "Unknown error") as Any
+            ))
         }
     }
 
@@ -98,9 +115,17 @@ class ModDevicePn532(private val context: Context) {
     fun connectBluetoothDevice(bluetoothDevice: BluetoothDevice) {
         moduleScope.launch {
             try {
+                ModMainDebug.debugLog("ModDevicePn532", "bt_connect_start", mapOf(
+                    "device_name" to (bluetoothDevice.name ?: "Unknown") as Any,
+                    "device_address" to bluetoothDevice.address
+                ))
+
                 // Verify Bluetooth adapter exists
                 if (bluetoothAdapter == null) {
                     logStatus("✗ Bluetooth adapter not available")
+                    ModMainDebug.debugLog("ModDevicePn532", "bt_connect_error", mapOf(
+                        "reason" to "adapter_not_available"
+                    ))
                     return@launch
                 }
 
@@ -109,14 +134,20 @@ class ModDevicePn532(private val context: Context) {
                     bluetoothSocket = bluetoothDevice.createRfcommSocketToServiceRecord(
                         UUID.fromString(PN532_RFCOMM_UUID)
                     )
+                    ModMainDebug.debugLog("ModDevicePn532", "bt_socket_created", null)
                 } catch (e: IOException) {
                     logStatus("✗ RFCOMM socket creation failed: ${e.message}")
+                    ModMainDebug.debugLog("ModDevicePn532", "bt_connect_error", mapOf(
+                        "reason" to "socket_creation_failed",
+                        "error" to (e.message ?: "Unknown error") as Any
+                    ))
                     return@launch
                 }
 
                 // Connect socket
                 try {
                     bluetoothSocket?.connect()
+                    ModMainDebug.debugLog("ModDevicePn532", "bt_socket_connected", null)
                 } catch (e: IOException) {
                     logStatus("✗ Bluetooth connection failed: ${e.message}")
                     try {
@@ -125,6 +156,10 @@ class ModDevicePn532(private val context: Context) {
                         logStatus("✗ Socket close failed: ${closeException.message}")
                     }
                     bluetoothSocket = null
+                    ModMainDebug.debugLog("ModDevicePn532", "bt_connect_error", mapOf(
+                        "reason" to "socket_connect_failed",
+                        "error" to (e.message ?: "Unknown error") as Any
+                    ))
                     return@launch
                 }
 
@@ -132,6 +167,7 @@ class ModDevicePn532(private val context: Context) {
                 try {
                     bluetoothInputStream = bluetoothSocket?.getInputStream()
                     bluetoothOutputStream = bluetoothSocket?.getOutputStream()
+                    ModMainDebug.debugLog("ModDevicePn532", "bt_streams_acquired", null)
                 } catch (e: IOException) {
                     logStatus("✗ Failed to get streams: ${e.message}")
                     try {
@@ -140,6 +176,10 @@ class ModDevicePn532(private val context: Context) {
                         logStatus("✗ Socket close failed: ${closeException.message}")
                     }
                     bluetoothSocket = null
+                    ModMainDebug.debugLog("ModDevicePn532", "bt_connect_error", mapOf(
+                        "reason" to "streams_acquisition_failed",
+                        "error" to (e.message ?: "Unknown error") as Any
+                    ))
                     return@launch
                 }
 
@@ -147,8 +187,17 @@ class ModDevicePn532(private val context: Context) {
                 connectedBluetoothDevice = bluetoothDevice
                 isBluetoothConnected = true
                 logStatus("✓ Bluetooth connected to ${bluetoothDevice.getName()} (${bluetoothDevice.getAddress()})")
+                ModMainDebug.debugLog("ModDevicePn532", "bt_connected", mapOf(
+                    "device_name" to (bluetoothDevice.name ?: "Unknown") as Any,
+                    "device_address" to bluetoothDevice.address,
+                    "timestamp" to System.currentTimeMillis()
+                ))
             } catch (e: Exception) {
                 logStatus("✗ Bluetooth connection error: ${e.message}")
+                ModMainDebug.debugLog("ModDevicePn532", "bt_connect_error", mapOf(
+                    "reason" to "general_exception",
+                    "error" to (e.message ?: "Unknown error") as Any
+                ))
             }
         }
     }
@@ -168,8 +217,14 @@ class ModDevicePn532(private val context: Context) {
             isBluetoothConnected = false
             connectedBluetoothDevice = null
             logStatus("✓ Bluetooth disconnected")
+            ModMainDebug.debugLog("ModDevicePn532", "bt_disconnected", mapOf(
+                "timestamp" to System.currentTimeMillis()
+            ))
         } catch (e: IOException) {
             logStatus("✗ Disconnect error: ${e.message}")
+            ModMainDebug.debugLog("ModDevicePn532", "bt_disconnect_error", mapOf(
+                "error" to (e.message ?: "Unknown error") as Any
+            ))
         }
     }
 
@@ -184,6 +239,10 @@ class ModDevicePn532(private val context: Context) {
     fun sendBluetoothData(data: ByteArray): Boolean {
         if (!isBluetoothConnected) {
             logStatus("⚠ Bluetooth not connected")
+            ModMainDebug.debugLog("ModDevicePn532", "bt_send_error", mapOf(
+                "reason" to "not_connected",
+                "data_length" to data.size
+            ))
             return false
         }
 
@@ -191,9 +250,18 @@ class ModDevicePn532(private val context: Context) {
             bluetoothOutputStream?.write(data)
             bluetoothOutputStream?.flush()
             logStatus("✓ Sent ${data.size} bytes via Bluetooth")
+            ModMainDebug.debugLog("ModDevicePn532", "bt_data_sent", mapOf(
+                "data_length" to data.size,
+                "timestamp" to System.currentTimeMillis()
+            ))
             true
         } catch (e: IOException) {
             logStatus("✗ Send failed: ${e.message}")
+            ModMainDebug.debugLog("ModDevicePn532", "bt_send_error", mapOf(
+                "reason" to "io_error",
+                "error" to (e.message ?: "Unknown error") as Any,
+                "data_length" to data.size
+            ))
             false
         }
     }
@@ -209,6 +277,10 @@ class ModDevicePn532(private val context: Context) {
     fun receiveBluetoothData(bufferSize: Int = 1024): ByteArray? {
         if (!isBluetoothConnected) {
             logStatus("⚠ Bluetooth not connected")
+            ModMainDebug.debugLog("ModDevicePn532", "bt_receive_error", mapOf(
+                "reason" to "not_connected",
+                "buffer_size" to bufferSize
+            ))
             return null
         }
 
@@ -217,12 +289,25 @@ class ModDevicePn532(private val context: Context) {
             val bytesRead = bluetoothInputStream?.read(buffer) ?: 0
             if (bytesRead > 0) {
                 logStatus("✓ Received $bytesRead bytes via Bluetooth")
+                ModMainDebug.debugLog("ModDevicePn532", "bt_data_received", mapOf(
+                    "bytes_read" to bytesRead,
+                    "buffer_size" to bufferSize,
+                    "timestamp" to System.currentTimeMillis()
+                ))
                 buffer.copyOf(bytesRead)
             } else {
+                ModMainDebug.debugLog("ModDevicePn532", "bt_receive_empty", mapOf(
+                    "buffer_size" to bufferSize
+                ))
                 null
             }
         } catch (e: IOException) {
             logStatus("✗ Receive failed: ${e.message}")
+            ModMainDebug.debugLog("ModDevicePn532", "bt_receive_error", mapOf(
+                "reason" to "io_error",
+                "error" to (e.message ?: "Unknown error") as Any,
+                "buffer_size" to bufferSize
+            ))
             null
         }
     }

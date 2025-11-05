@@ -57,17 +57,25 @@ class ModDeviceAndroidNfc(private val context: Context) {
                 logStatus("⚠ NFC adapter not available on device")
                 isNfcAvailable = false
                 isInitialized = true
+                ModMainDebug.debugLog("ModDeviceAndroidNfc", "initialize_warning", mapOf(
+                    "reason" to "nfc_adapter_not_available"
+                ))
                 return
             }
 
             isNfcAvailable = true
+            ModMainDebug.debugLog("ModDeviceAndroidNfc", "nfc_adapter_found", null)
 
             // Check if NFC is enabled
             isNfcEnabled = nfcAdapter?.isEnabled() ?: false
             if (!isNfcEnabled) {
                 logStatus("⚠ NFC is disabled")
+                ModMainDebug.debugLog("ModDeviceAndroidNfc", "initialize_warning", mapOf(
+                    "reason" to "nfc_disabled"
+                ))
             } else {
                 logStatus("✓ NFC is enabled")
+                ModMainDebug.debugLog("ModDeviceAndroidNfc", "nfc_enabled", null)
             }
 
             // Initialize reader callback
@@ -77,8 +85,15 @@ class ModDeviceAndroidNfc(private val context: Context) {
 
             isInitialized = true
             logStatus("✓ Android NFC module initialized")
+            ModMainDebug.debugLog("ModDeviceAndroidNfc", "initialize_complete", mapOf(
+                "nfc_available" to isNfcAvailable,
+                "nfc_enabled" to isNfcEnabled
+            ))
         } catch (e: Exception) {
             logStatus("✗ Initialization failed: ${e.message}")
+            ModMainDebug.debugLog("ModDeviceAndroidNfc", "initialize_error", mapOf(
+                "error" to (e.message ?: "Unknown error") as Any
+            ))
         }
     }
 
@@ -245,6 +260,10 @@ class ModDeviceAndroidNfc(private val context: Context) {
     fun transceiveNfcA(command: ByteArray): ByteArray? {
         if (currentTag == null) {
             logStatus("⚠ No current tag")
+            ModMainDebug.debugLog("ModDeviceAndroidNfc", "nfca_transceive_error", mapOf(
+                "reason" to "no_current_tag",
+                "command_length" to command.size
+            ))
             return null
         }
 
@@ -252,6 +271,10 @@ class ModDeviceAndroidNfc(private val context: Context) {
             val nfcA = NfcA.get(currentTag)
             if (nfcA == null) {
                 logStatus("⚠ Tag does not support NFC-A")
+                ModMainDebug.debugLog("ModDeviceAndroidNfc", "nfca_transceive_error", mapOf(
+                    "reason" to "tag_not_nfc_a",
+                    "command_length" to command.size
+                ))
                 return null
             }
 
@@ -260,9 +283,20 @@ class ModDeviceAndroidNfc(private val context: Context) {
             nfcA.close()
 
             logStatus("✓ NFC-A transceive sent ${command.size} bytes, received ${response.size} bytes")
+            ModMainDebug.logApdu(command, response, "ModDeviceAndroidNfc")
+            ModMainDebug.debugLog("ModDeviceAndroidNfc", "nfca_transceive_success", mapOf(
+                "command_length" to command.size,
+                "response_length" to response.size,
+                "timestamp" to System.currentTimeMillis()
+            ))
             response
         } catch (e: Exception) {
             logStatus("✗ NFC-A transceive failed: ${e.message}")
+            ModMainDebug.debugLog("ModDeviceAndroidNfc", "nfca_transceive_error", mapOf(
+                "reason" to "transceive_failed",
+                "error" to (e.message ?: "Unknown error") as Any,
+                "command_length" to command.size
+            ))
             null
         }
     }
