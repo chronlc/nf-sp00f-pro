@@ -504,6 +504,62 @@ git push origin master
 
 ---
 
+### STEP 12: UPDATE REMEMBER MCP (2 minutes)
+
+**Store completion and progress in workspace memory**
+
+**Action Items:**
+1. Use the remember MCP tool to document:
+   - What was accomplished in this task
+   - Key files created or modified
+   - Any new patterns or conventions established
+   - Timestamp of completion
+
+2. Example memory entry:
+```
+[DATE TIME] - [TASK-NAME]: Completed successfully
+- Files modified: [list key files]
+- Commit: [commit hash]
+- Pattern established: [if applicable]
+- Next steps: [recommended follow-up tasks]
+- Time elapsed: [X minutes]
+```
+
+3. Update the workspace memory file:
+   - Location: `.github/instructions/memory.instructions.md`
+   - Add new entry under "Memories/Facts" section
+   - Include chronological timestamp
+   - Keep entries concise but informative
+
+**Memory Entry Requirements:**
+- ✅ Include task name or scope identifier
+- ✅ List key files created/modified
+- ✅ Include commit hash reference
+- ✅ Document any patterns established
+- ✅ Note for future reference
+- ✅ Include timestamp in format: YYYY-MM-DD HH:MM
+
+**Verification:**
+- ✅ Memory entry added to `.github/instructions/memory.instructions.md`
+- ✅ Entry includes commit hash
+- ✅ Timestamp is current
+- ✅ Task summary is clear and actionable
+- ✅ Memory file is added to git (if changed)
+
+**Post-Memory Update:**
+If memory file was modified:
+```bash
+git add .github/instructions/memory.instructions.md
+git commit -m "[MEMORY-UPDATE] Document [TASK-NAME] completion
+
+- Commit: [hash]
+- Task: [description]"
+
+git push origin master
+```
+
+---
+
 ## LESSONS FROM PRODUCTION DEPLOYMENTS
 
 ### Error Statistics:
@@ -584,10 +640,15 @@ CONSUMER VERIFICATION:
 11. [ ] If ripple effect identified: Have I tested affected features?
 12. [ ] If ripple effect identified: Have I removed old code (if applicable)?
 
+GIT & MEMORY:
+13. [ ] Have I committed all changes with proper message?
+14. [ ] Have I pushed to remote (git push origin master)?
+15. [ ] Have I updated the remember MCP with task completion?
+
 COMPLETION:
-13. [ ] Is there ANY broken code left behind?
-14. [ ] Is there ANY TODO related to this change?
-15. [ ] Can I honestly say this task is 100% COMPLETE?
+16. [ ] Is there ANY broken code left behind?
+17. [ ] Is there ANY TODO related to this change?
+18. [ ] Can I honestly say this task is 100% COMPLETE?
 ```
 
 **If ANY answer is NO → Task is INCOMPLETE, keep working.**
