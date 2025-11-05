@@ -493,12 +493,12 @@ git log -1 --stat
 - ✅ Code review complete
 - ✅ Root cause documented (if bug fix)
 
-**Post-Commit Actions:**
+**Post-Commit Actions (Mandatory):**
 ```bash
 # View commit details
 git log -1
 
-# Push to remote (if applicable)
+# Push to remote
 git push origin master
 ```
 
