@@ -33,7 +33,9 @@ import com.nfsp00fpro.app.modules.CardSession
  * Reference UI from nf-sp00f33r project adapted for nf-sp00f-pro
  */
 @Composable
-fun DashboardScreen(viewModel: DashboardViewModel = viewModel()) {
+fun DashboardScreen() {
+    val context = LocalContext.current
+    val viewModel: DashboardViewModel = viewModel(factory = DashboardViewModel.Factory(context))
     val recentSessions by viewModel.recentSessions.collectAsState(initial = emptyList())
     val hardwareReady by viewModel.hardwareReady.collectAsState(initial = false)
 
