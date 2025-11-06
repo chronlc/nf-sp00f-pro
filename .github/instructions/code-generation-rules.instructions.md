@@ -35,13 +35,13 @@ This applies to ALL code generation: UI, business logic, data models, tests, API
 
 ---
 
-### STEP 1: SCOPE DEFINITION (30 seconds)
+### STEP 1: SCOPE DEFINITION
 
-**What am I building?**
-1. Write 1-2 sentence description of the task
-2. List success criteria (e.g., "Compiles without errors", "Passes all tests", "No runtime crashes")
-3. Identify obvious dependencies (external libs, internal classes, APIs)
-4. **CRITICAL:** Identify if this change affects existing code (provider change? replaces existing?)
+**Define the task clearly:**
+1. Write 1-2 sentence description
+2. List success criteria (Compiles, Passes tests, No crashes)
+3. Identify dependencies
+4. **CRITICAL:** Identify if this affects existing code (ripple effect?)
 
 **TODO LIST MANAGEMENT:**
 - [ ] Create todo list in VS Code using `manage_todo_list` tool
@@ -53,31 +53,30 @@ This applies to ALL code generation: UI, business logic, data models, tests, API
 **Example - No Ripple Effect:**
 ```
 Task: Generate ProductListScreen
-Description: New composable screen to display list of products from ViewModel
-Success Criteria: Compiles first try, displays products, navigates to detail on tap
-Dependencies: ProductViewModel, Product data class, Compose Material3, Navigation
-Ripple Effect: NO - new screen, doesn't replace or modify existing code
+Description: Display products from ViewModel
+Success Criteria: Compiles, displays products, navigates on tap
+Dependencies: ProductViewModel, Product data class, Compose Material3
+Ripple Effect: NO - new screen
 ```
 
 **Example - WITH Ripple Effect:**
 ```
-Task: Create UnifiedHardwareManager (replaces HardwareDetectionService)
-Description: Consolidates NFC/Bluetooth device detection into single manager
-Success Criteria: Compiles first try, all consumers updated and working, no crashes
-Dependencies: NfcDeviceModule, framework.devices APIs, existing consumers
-Ripple Effect: YES - replaces HardwareDetectionService
-  - Consumers identified: MainActivity.kt, DashboardScreen.kt, DashboardViewModel.kt
-  - Estimated updates: 18 changes across 3 files
-  - Estimated time: Provider (30 min) + Consumers (20 min) = 50 min total
+Task: Replace HardwareDetectionService with UnifiedHardwareManager
+Description: Consolidate device detection into single manager
+Success Criteria: Compiles, all consumers updated, no crashes
+Dependencies: NfcDeviceModule, existing consumers
+Ripple Effect: YES - affects 3+ files
+  - Consumers: MainActivity.kt, DashboardScreen.kt, DashboardViewModel.kt
+  - Changes: 18 locations across 3 files
 ```
 
 ---
 
-### STEP 2: CONSUMER IMPACT ANALYSIS (2-3 minutes, MANDATORY IF ripple effect)
+### STEP 2: CONSUMER IMPACT ANALYSIS
 
 **Do existing files use what I'm changing?**
 
-**This step is NON-OPTIONAL if a ripple effect is identified in Step 1.**
+**MANDATORY if ripple effect identified in Step 1.**
 
 #### Systematic Search Protocol:
 
@@ -104,44 +103,21 @@ Create a **Consumer Impact Report**:
 
 ```
 CONSUMER IMPACT ASSESSMENT
-========================
-
 Target Change: UnifiedHardwareManager (replaces HardwareDetectionService)
 
 Search Results:
 - Direct imports: 3 files
-- Direct instantiation: 4 locations
+- Instantiation: 4 locations
 - Method calls: 12 locations
 - State access: 5 locations
-- Total code locations affected: 24
 
 Files to Update:
-1. MainActivity.kt
-   - Line 45: import statement
-   - Line 67: initialization call
-   - Line 89: method call (getDeviceStatus)
-   
-2. DashboardScreen.kt
-   - Line 12: import statement
-   - Line 34: state access (deviceService.state)
-   - Line 56: method call (refresh)
-   
-3. DashboardViewModel.kt
-   - Line 8: import statement
-   - Line 19: constructor dependency
-   - Lines 45-67: method calls (8 locations)
-   
-4. [Additional files if found]
+1. MainActivity.kt (line 45: import, line 67: init, line 89: method call)
+2. DashboardScreen.kt (line 12: import, line 34: state access, line 56: method call)
+3. DashboardViewModel.kt (line 8: import, line 19: constructor, lines 45-67: 8 calls)
 
-Type of Changes Required:
-- Import updates: 3 locations
-- Constructor/initialization: 4 locations
-- Method calls: 12 locations
-- State property access: 5 locations
-
-Estimated Update Time: 20-25 minutes
-Risk Level: MEDIUM (affects critical startup path)
-Testing Required: Manual test of MainActivity launch and DashboardScreen render
+Type of Changes: Import updates (3), Constructor (4), Method calls (12), State access (5)
+Risk Level: MEDIUM (affects startup path)
 ```
 
 #### Decision Gate:
@@ -150,28 +126,22 @@ Testing Required: Manual test of MainActivity launch and DashboardScreen render
 
 - [ ] Have I identified ALL consumer files?
 - [ ] Do I have search results documenting each location?
-- [ ] Have I estimated time for all consumer updates?
-- [ ] Do I have time to complete BOTH provider AND consumer updates NOW?
-- [ ] Can I commit to updating ALL consumers before declaring task complete?
+- [ ] Do I have time to update ALL consumers NOW?
+- [ ] Can I commit to updating ALL consumers before declaring complete?
 
-**If ANY answer is NO:**
-- ❌ Do NOT proceed to Step 3
-- Stop and clarify scope, time, or dependencies with user
-- Re-evaluate if task should be split or postponed
+**If ANY answer is NO:** ❌ STOP - clarify scope/time with user
 
-**If ALL answers are YES:**
-- ✅ Proceed to Step 3
-- Keep the Consumer Impact Report available for Step 9 verification
+**If ALL answers are YES:** ✅ Proceed - Keep Consumer Impact Report for Step 9
 
 ---
 
-### STEP 3: DEPENDENCY AND CONSUMER MAPPING (2-5 minutes)
+### STEP 3: DEPENDENCY AND CONSUMER MAPPING
 
-**What do I need to know?**
-- List ALL classes/interfaces this code interacts with
-- List ALL APIs/frameworks this code uses
-- For each dependency: identify file path
-- Cross-reference with consumer impact from Step 2 (if applicable)
+**Map dependencies and interactions:**
+- List ALL classes/interfaces
+- List ALL APIs/frameworks used
+- Identify file paths for each
+- Cross-reference consumer impact
 
 **Example:**
 ```
@@ -184,15 +154,15 @@ Dependencies for ProductListScreen:
 
 ---
 
-### STEP 4: DEFINITION READING & NAMING SCHEME VERIFICATION (5-10 minutes)
+### STEP 4: DEFINITION READING & NAMING SCHEME VERIFICATION
 
-**Read and document. No skipping. No skimming.**
+**Read and document. No skipping.**
 
 For EACH dependency:
 1. Open the file
 2. Read relevant classes/methods
 3. Document exact names, types, signatures
-4. Note any constraints or special requirements
+4. Note constraints and requirements
 
 **NAMING SCHEME COMPLIANCE CHECK (nf-sp00f-pro):**
 - [ ] Kotlin files: `kebab-case` (e.g., `mod-device-pn532.kt`)
@@ -214,19 +184,14 @@ For EACH dependency:
 ProductViewModel.kt opened
 
 StateFlows found:
-- products: StateFlow<List<Product>>           ← List of Product, not Product?
+- products: StateFlow<List<Product>>
 - isLoading: StateFlow<Boolean>
-- errorMessage: StateFlow<String?>             ← String?, nullable
+- errorMessage: StateFlow<String?>
 
 Methods found:
-- loadProducts(): Unit                         ← No parameters, returns Unit
+- loadProducts(): Unit
 - refreshProducts(): Unit
-- searchProducts(query: String): Unit          ← String parameter, not String?
-ok now lets do our another scope, when i give you a scope you make sure you run this through our 10 step rules. Also I want you to add the generated workflow from the various steps (like code gen and the other steps) to our VSCodes internal TODO list so it displays and update the TODO list as you go with checkmarks and so on.
-
-Scope:
-- Ok now for the next module i want it to be a debug/logger for internal/debug pruposes, lets call this module 'mod-main-debug.kt'. This module main function will be called debugLog().  THis module will not only provide us a debug manager for you, yes you AI, to be able to fully debug program operations autonomosly.  I will have phone connected via ADB for you so code gen it well so you can cantrol program and be able to send raw apdus to the devices when needed.  This will also produce a log file (JSON) and will make it easier to see the programs flow and fully debug.  Fully integrate this module with our modules and UI files as needed. I Would like to update all modules and UI files to use this new logger/debug module so we can interact with app fully at debug.
-No enums in this class.
+- searchProducts(query: String): Unit
 ```
 
 **Example - Reading Product.kt:**
@@ -234,57 +199,53 @@ No enums in this class.
 Product.kt opened
 
 data class Product(
-    val id: Long,                              ← Long, not Int
-    val name: String,                          ← String, non-nullable
-    val price: Double,                         ← Double, not Float
-    val imageUrl: String?,                     ← String?, nullable
+    val id: Long,
+    val name: String,
+    val price: Double,
+    val imageUrl: String?,
     val inStock: Boolean
 )
-
-Properties documented. No nested classes.
 ```
 
 ---
 
-### STEP 5: INTERFACE MAPPING (2-3 minutes)
+### STEP 5: INTERFACE MAPPING
 
 **How do components connect?**
 - Document data flow (ViewModel → Screen → Composables)
-- Note type transformations needed (e.g., Long → String for display)
-- Identify potential type mismatches
+- Note type transformations
+- Identify type mismatches
 
 **Example:**
 ```
 Data Flow for ProductListScreen:
 
-ViewModel                     Screen                      UI
-products: List<Product>  →    val products by         →   LazyColumn {
-                              viewModel.products           items(products) {
-                              .collectAsState()              ProductCard(it)
-                                                          }
-                                                       }
+ViewModel                Screen                      UI
+products:List<Product>→ val products by         →   LazyColumn {
+                        viewModel.products           items(products) {
+                        .collectAsState()              ProductCard(it)
+                                                    }
+                                                 }
 
-Type Conversions Needed:
-- Product.price (Double) → Text needs String → "${product.price}"
-- Product.imageUrl (String?) → AsyncImage needs non-null → imageUrl ?: placeholderUrl
-
-No other conversions needed.
+Type Conversions:
+- Product.price (Double) → "${product.price}"
+- Product.imageUrl (String?) → imageUrl ?: placeholderUrl
 ```
 
 ---
 
-### STEP 6: GENERATION WITH PRECISION (10-30 minutes)
+### STEP 6: GENERATION WITH PRECISION
 
 **Code using ONLY information from Steps 1-5.**
 
 Rules:
-- Reference your documentation from Steps 2-5
-- Copy names character-by-character (don't retype from memory)
-- Use exact types documented
-- Apply explicit conversions where documented
-- No improvisation, no "I think it's...", no guessing
-- **ADD COMPREHENSIVE COMMENTS** explaining what each block does and why
-- **NO SIMULATION, NO MOCK DATA** - ONLY real data from actual sources
+- Reference documentation from Steps 2-5
+- Copy names exactly (don't guess)
+- Use exact types
+- Apply explicit conversions
+- No improvisation or guessing
+- **ADD COMPREHENSIVE COMMENTS** (what, why, data source)
+- **NO SIMULATION, NO MOCK DATA** - Only real data
 
 **Anti-Pattern - NEVER DO THIS:**
 ```kotlin
@@ -512,51 +473,46 @@ fun startCardReading() {
 ```
 Code Comments:
 □ Every function has KDoc explaining purpose and real data source
-□ Every StateFlow property has comment explaining what real data it represents
-□ Every data-binding line has inline comment explaining where data comes from
+□ Every StateFlow property has comment on data origin
 □ Every database/API call has comment noting it's real data
-□ Every exception handler has comment about what real error it's handling
-□ Every null/empty state has comment explaining when it occurs
-□ Every loop/condition has comment if not obvious what real data it's processing
+□ Every exception handler has comment on error type
+□ No confusing variable names
+□ No "magic values" without explanation
 
 Code Clarity:
-□ If a developer reads a line, they KNOW where the data comes from (no guessing)
-□ If a developer reads a line, they KNOW if it's real or test data
-□ If a developer reads a line, they KNOW what can go wrong and how errors are logged
-□ No confusing variable names - names match documentation from STEP 4 exactly
-□ No "magic values" - all constants explained via comments or KDoc
+□ Developer can see where data comes from (no guessing)
+□ Developer can see if data is real or test
+□ No missing error handling
+□ Names match documentation exactly
 ```
 
 ---
 
-### STEP 7: SELF-VALIDATION (5-10 minutes)
+### STEP 7: SELF-VALIDATION
 
-**Review before compile. Catch errors in review, not compilation.**
+**Review before compile. Catch errors in review.**
 
 For generated code:
 1. Compare every property name with Step 4 documentation
 2. Compare every method call with Step 4 documentation
-3. Verify every type conversion from Step 5 is applied
-4. Check for any guessed names (if you didn't document it, you guessed it)
-5. **CRITICAL: Search for simulate/mock functions and remove ALL of them**
-6. **CRITICAL: Verify ALL data comes from real sources, never hardcoded**
+3. Verify type conversions applied
+4. Check for guessed names
+5. **CRITICAL: Remove ALL simulate/mock functions**
+6. **CRITICAL: Verify ALL real data sources, never hardcoded**
 
 **Validation Checklist:**
 ```
-□ Every property access verified against documentation
+□ Every property name verified against documentation
 □ Every method call verified against documentation
 □ Every type conversion applied as documented
-□ No names used that weren't in documentation
-□ No assumptions about nullability
-□ No assumptions about types
-□ NO hardcoded status strings or mock data values
-□ NO simulate*() functions that generate fake data
-□ NO mock data constructors that create test values
-□ ALL UI data bound to real sources (StateFlow, API, database, sensors)
-□ Loading states used when data not yet available
-□ Every StateFlow/data property has inline comment explaining data source
-□ Every ViewModel method documents where real data comes from
-□ Every error handling includes ModMainDebug logging
+□ No names used that weren't documented
+□ No assumptions about nullability or types
+□ NO hardcoded status strings or mock data
+□ NO simulate*() functions or mock data generators
+□ ALL UI data bound to real sources
+□ Every StateFlow property has comment explaining data source
+□ Every ViewModel method documents real data source
+□ Every error handler includes ModMainDebug logging
 ```
 
 **SPECIFIC ANTI-PATTERNS TO ELIMINATE:**
@@ -600,7 +556,9 @@ _status.value = bluetoothStatus  // ✅ Real value from device
 
 ---
 
-### STEP 7.5: FUNCTIONALITY PRESERVATION VALIDATION (5 minutes, MANDATORY IF CODE SIMPLIFIED)
+### STEP 7.5: FUNCTIONALITY PRESERVATION VALIDATION
+
+**MANDATORY if code simplified.**
 
 **Critical Gate: Did simplification remove intended functionality?**
 
@@ -613,41 +571,15 @@ _status.value = bluetoothStatus  // ✅ Real value from device
 
 **Functionality Verification Checklist:**
 
-Before marking code complete, answer YES to ALL of these:
+Before marking code complete, answer YES to ALL:
 
 ```
 □ What was the ORIGINAL intended functionality?
-  - Document what the code was supposed to do
-  - List all features/operations it should perform
-  - Note all user interactions it should support
-
 □ What functionality was REMOVED or CHANGED?
-  - List every method that was deleted
-  - Document every property that was removed
-  - Note every operation that was simplified
-  - Explain WHY each removal was necessary
-
 □ Can all original use cases still be performed?
-  - Test scenario: Can user still trigger all operations?
-  - Test scenario: Do all data flows still work?
-  - Test scenario: Are all error conditions still handled?
-  - Test scenario: Is all logging still in place?
-
 □ Was functionality moved or just removed?
-  - If moved: Where is the functionality now? Is it accessible?
-  - If moved: Is it documented where functionality went?
-  - If removed: Is there a TODO explaining why and when it will be restored?
-
-□ Are there any TODO comments for future work?
-  - Mark clearly what functionality is pending device integration
-  - Document what real hardware interaction is needed
-  - Specify what conditions need to be met before functionality is complete
-  - Include timeline or priority
-
+□ Are there TODOs documenting pending work?
 □ Will real device interaction eventually provide this?
-  - If waiting for device: Is path clear for device to integrate?
-  - If waiting for device: Are stub methods in place to accept real data?
-  - If waiting for device: Is there a plan/TODO for device integration?
 ```
 
 **Example - BAD (Functionality Lost):**
@@ -719,25 +651,18 @@ fun startCardReading() {
 ```
 
 **GATE CHECK - Do NOT proceed to STEP 8 if:**
-- ❌ Functionality was removed but not documented with TODO
-- ❌ Functionality was removed but no replacement path exists
-- ❌ Code appears to work but doesn't actually perform intended operations
+- ❌ Functionality removed but not documented with TODO
+- ❌ Functionality removed but no replacement path exists
+- ❌ Code appears to work but doesn't perform intended operations
 - ❌ User interactions removed but not documented why
 - ❌ Testing capability removed without explanation
 - ❌ Any original use case can no longer be performed
 
-**If any check fails:**
-1. Add explicit TODO comments documenting what's missing
-2. Ensure real data source is documented (device, API, database)
-3. Add placeholder/stub for future functionality
-4. Document why simplification was necessary
-5. THEN proceed to STEP 8
-
 ---
 
-### STEP 8: COMPILE AND VERIFY (1-2 minutes)
+### STEP 8: COMPILE AND VERIFY
 
-**The moment of truth.**
+**Verify the build.**
 
 ```bash
 ./gradlew compileDebugKotlin
@@ -759,11 +684,11 @@ fun startCardReading() {
 
 ---
 
-### STEP 9: CONSUMER UPDATE VERIFICATION (5-15 minutes, IF ripple effect identified)
+### STEP 9: CONSUMER UPDATE VERIFICATION
 
 **Did I update ALL consumers?**
 
-**If Step 1 identified consumers:**
+**If Step 1 identified ripple effect:**
 
 1. **Verify each consumer updated:**
 ```
@@ -788,11 +713,9 @@ All consumers updated: YES
 
 4. **Test affected features:**
 ```bash
-# If UI changed, install and test
 ./gradlew :nf-sp00f-pro:assembleDebug
 adb install -r nf-sp00f-pro/build/outputs/apk/debug/nf-sp00f-pro-debug.apk
 adb shell am start -n com.nfsp00fpro.app/.MainActivity
-# Verify screens load, no crashes
 ```
 
 5. **Clean up old code:**
@@ -800,27 +723,14 @@ adb shell am start -n com.nfsp00fpro.app/.MainActivity
 If new implementation fully replaces old:
 □ Delete old provider file (if unused)
 □ Remove @Deprecated markers (if migration complete)
-□ Update documentationok now lets do our another scope, when i give you a scope you make sure you run this through our 10 step rules. Also I want you to add the generated workflow from the various steps (like code gen and the other steps) to our VSCodes internal TODO list so it displays and update the TODO list as you go with checkmarks and so on.
-
-Scope:
-- Ok now for the next module i want it to be a debug/logger for internal/debug pruposes, lets call this module 'mod-main-debug.kt'. This module main function will be called debugLog().  THis module will not only provide us a debug manager for you, yes you AI, to be able to fully debug program operations autonomosly.  I will have phone connected via ADB for you so code gen it well so you can cantrol program and be able to send raw apdus to the devices when needed.  This will also produce a log file (JSON) and will make it easier to see the programs flow and fully debug.  Fully integrate this module with our modules and UI files as needed. I Would like to update all modules and UI files to use this new logger/debug module so we can interact with app fully at debug.
-□ Remove any migration TODOs
+□ Update documentation
 ```
-
-**Task ONLY complete when:**
-- ✅ Provider changed
-- ✅ ALL consumers updated  
-- ✅ BUILD SUCCESSFUL with consumers
-- ✅ Features tested and working
-- ✅ Old code removed (if applicable)
-
-**If ANY step incomplete → Task is NOT done, continue working**
 
 ---
 
-### STEP 10: CHANGELOG UPDATE (5 minutes)
+### STEP 10: CHANGELOG UPDATE
 
-**Document all changes in CHANGELOG.md**
+**Document changes in CHANGELOG.md**
 
 **Action Items:**
 - Open `CHANGELOG.md` in nf-sp00f-pro directory
@@ -855,9 +765,9 @@ Scope:
 
 ---
 
-### STEP 11: GIT COMMIT & VERSION CONTROL (5 minutes)
+### STEP 11: GIT COMMIT & VERSION CONTROL
 
-**Track changes properly with git**
+**Track changes properly.**
 
 **Action Items:**
 1. Stage all changed files:
@@ -883,101 +793,64 @@ git commit -m "[SCOPE] Brief description
 git log -1 --stat
 ```
 
-**Commit Message Requirements (Minimal & Professional):**
-- ✅ Scope: `[SCOPE-N]`, `[FEATURE]`, or `[BUG-FIX]`
-- ✅ Brief one-line description
-- ✅ List changed files with concise summaries
-
 **Pre-Commit Checklist:**
 - ✅ Code compiles with zero errors
 - ✅ Zero build warnings
 - ✅ All consumers updated (if ripple effect)
 - ✅ CHANGELOG.md updated
 
-**Post-Commit Actions:**
+**Post-Commit:**
 ```bash
-git log -1
-git push origin master
-```
 git push origin master
 ```
 
 ---
 
-### STEP 12: UPDATE REMEMBER MCP (2 minutes)
+### STEP 12: UPDATE REMEMBER MCP
 
-**Store completion and progress in workspace memory**
+**Store completion in workspace memory.**
 
 **Action Items:**
-1. Use the remember MCP tool to document:
-   - What was accomplished in this task
-   - Key files created or modified
-   - Any new patterns or conventions established
-   - Timestamp of completion
+1. Document what was accomplished in this task
+2. List key files created or modified
+3. Document any new patterns established
+4. Include timestamp
 
-2. Example memory entry:
+**Update the workspace memory file:**
+   - Location: `.github/instructions/memory.instructions.md`
+   - Add new entry under "Memories/Facts" section
+   - Include chronological timestamp
+   - Keep entries concise
+
+**Memory Entry Format:**
 ```
 [DATE TIME] - [TASK-NAME]: Completed successfully
 - Files modified: [list key files]
 - Commit: [commit hash]
 - Pattern established: [if applicable]
 - Next steps: [recommended follow-up tasks]
-- Time elapsed: [X minutes]
 ```
-
-3. Update the workspace memory file:
-   - Location: `.github/instructions/memory.instructions.md`
-   - Add new entry under "Memories/Facts" section
-   - Include chronological timestamp
-   - Keep entries concise but informative
-
-**Memory Entry Requirements:**
-- ✅ Include task name or scope identifier
-- ✅ List key files created/modified
-- ✅ Include commit hash reference
-- ✅ Document any patterns established
-- ✅ Note for future reference
-- ✅ Include timestamp in format: YYYY-MM-DD HH:MM
 
 **Verification:**
-- ✅ Memory entry added to `.github/instructions/memory.instructions.md`
-- ✅ Entry includes commit hash
+- ✅ Memory entry added with commit hash
 - ✅ Timestamp is current
 - ✅ Task summary is clear and actionable
-- ✅ Memory file is added to git (if changed)
-
-**Post-Memory Update:**
-If memory file was modified:
-```bash
-git add .github/instructions/memory.instructions.md
-git commit -m "[MEMORY-UPDATE] Document [TASK-NAME] completion
-
-- Commit: [hash]
-- Task: [description]"
-
-git push origin master
-```
 
 ---
 
 ## LESSONS FROM PRODUCTION DEPLOYMENTS
 
-### Error Statistics:
-- **Total errors observed:** 29 (post-generation)
-- **Category 1 (Type Mismatches):** 4 errors - ALL from not reading definitions
-- **Category 2 (Unresolved References):** 12 errors - ALL from guessing names/scope
-- **Category 3 (Nullable Safety):** 7 errors - ALL from inconsistent null handling
-- **Category 4 (Method Signatures):** 6 errors - ALL from not validating APIs
+**Error Statistics (29 total):**
+- Type Mismatches: 4 errors - from not reading definitions
+- Unresolved References: 12 errors - from guessing names/scope
+- Nullable Safety: 7 errors - from inconsistent null handling
+- Method Signatures: 6 errors - from not validating APIs
 
-### Prevention Rate:
-**100% of these errors were preventable** by following the rules in this document.
+**Prevention:** 100% of errors were preventable by following these rules.
 
-### Time Cost (Cautionary Tale):
-- Code generation (with guessing): ~2 hours
-- Error fixing (systematic protocol): ~3 hours
-- **Total:** 5 hours
-
-**With these rules applied BEFORE generation:** ~2 hours (60% time savings)
+**Time Cost (Cautionary Tale):**
+- With guessing: ~2 hours generation + 3 hours fixing = 5 hours total
+- With systematic process: ~2 hours total (60% time savings)
 
 ---
 
@@ -1047,7 +920,7 @@ GIT:
 COMPLETION:
 □ No broken code left behind
 □ No outstanding TODOs related to this change
-18. [ ] Can I honestly say this task is 100% COMPLETE?
+□ Can I honestly say this task is 100% COMPLETE?
 ```
 
 **If ANY answer is NO → Task is INCOMPLETE, keep working.**
@@ -1069,26 +942,11 @@ I will be COMPLETE, not partial.
 I will be EFFICIENT through discipline, not speed through shortcuts.
 ```
 
-**Success looks like:**
-- ✅ Complete mapping in 10 minutes (includes consumer analysis)
-- ✅ Generation completes in 30 minutes
-- ✅ Consumer updates complete in 15 minutes
-- ✅ Self-validation finds all issues in 10 minutes
-- ✅ **BUILD SUCCESSFUL on first compile (with ALL consumers working)**
-- ✅ Total time: 65 minutes for COMPLETE working code (provider + consumers)
+**Success:** Complete mapping → generation → validation → all consumers updated → BUILD SUCCESS
 
-**Failure looks like:**
-- ❌ No mapping, start coding immediately
-- ❌ Generation takes 2 hours (guessing, rewriting)
-- ❌ Skip consumer analysis
-- ❌ Provider works, consumers broken
-- ❌ Skip self-validation
-- ❌ **20 compilation errors**
-- ❌ 3 hours fixing errors
-- ❌ Task declared "done" but consumers still broken
-- ❌ Total time: 5+ hours for INCOMPLETE code
+**Failure:** No mapping → guess names → provider works → consumers broken → 20 errors → task incomplete
 
-**The math is simple:** Systematic + Complete is faster than Fast + Broken.
+**The math:** Systematic is faster than broken.
 
 ---
 
