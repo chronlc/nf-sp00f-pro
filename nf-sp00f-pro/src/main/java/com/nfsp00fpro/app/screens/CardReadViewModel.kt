@@ -68,6 +68,44 @@ class CardReadViewModel(
     /** Real session list loaded from database - persistent records of actual reads */
     val recentReads: StateFlow<List<CardSession>> = _recentReads.asStateFlow()
 
+    // UI State for expanded controls
+    private val _showAdvancedSettings = MutableStateFlow(false)
+    val showAdvancedSettings: StateFlow<Boolean> = _showAdvancedSettings.asStateFlow()
+
+    private val _selectedReader = MutableStateFlow<String?>(null)
+    val selectedReader: StateFlow<String?> = _selectedReader.asStateFlow()
+
+    private val _selectedTechnology = MutableStateFlow("EMV/ISO-DEP")
+    val selectedTechnology: StateFlow<String> = _selectedTechnology.asStateFlow()
+
+    // Advanced settings
+    private val _advancedAmount = MutableStateFlow("")
+    val advancedAmount: StateFlow<String> = _advancedAmount.asStateFlow()
+
+    private val _advancedTtq = MutableStateFlow("")
+    val advancedTtq: StateFlow<String> = _advancedTtq.asStateFlow()
+
+    private val _advancedTransactionType = MutableStateFlow("Purchase")
+    val advancedTransactionType: StateFlow<String> = _advancedTransactionType.asStateFlow()
+
+    private val _advancedCryptoSelect = MutableStateFlow("ARQC")
+    val advancedCryptoSelect: StateFlow<String> = _advancedCryptoSelect.asStateFlow()
+
+    // APDU Log from ModMainDebug
+    private val _apduLog = MutableStateFlow<List<String>>(emptyList())
+    val apduLog: StateFlow<List<String>> = _apduLog.asStateFlow()
+
+    // Parsed EMV fields
+    private val _parsedEmvFields = MutableStateFlow<Map<String, String>>(emptyMap())
+    val parsedEmvFields: StateFlow<Map<String, String>> = _parsedEmvFields.asStateFlow()
+
+    // ROCA vulnerability status
+    private val _rocaVulnerabilityStatus = MutableStateFlow<String?>(null)
+    val rocaVulnerabilityStatus: StateFlow<String?> = _rocaVulnerabilityStatus.asStateFlow()
+
+    private val _isRocaVulnerable = MutableStateFlow(false)
+    val isRocaVulnerable: StateFlow<Boolean> = _isRocaVulnerable.asStateFlow()
+
     init {
         // Load real data from database on initialization
         loadRecentReads()
@@ -164,6 +202,37 @@ class CardReadViewModel(
                 _readingProgress.value = 0
             }
         }
+    }
+
+    // UI Control Methods
+    fun toggleAdvancedSettings() {
+        _showAdvancedSettings.value = !_showAdvancedSettings.value
+    }
+
+    fun selectReader(reader: String) {
+        _selectedReader.value = reader
+        ModMainDebug.debugLog("CardReadViewModel", "reader_selected", mapOf("reader" to reader))
+    }
+
+    fun selectTechnology(tech: String) {
+        _selectedTechnology.value = tech
+        ModMainDebug.debugLog("CardReadViewModel", "technology_selected", mapOf("tech" to tech))
+    }
+
+    fun updateAdvancedAmount(amount: String) {
+        _advancedAmount.value = amount
+    }
+
+    fun updateAdvancedTtq(ttq: String) {
+        _advancedTtq.value = ttq
+    }
+
+    fun updateAdvancedTransactionType(type: String) {
+        _advancedTransactionType.value = type
+    }
+
+    fun updateAdvancedCryptoSelect(crypto: String) {
+        _advancedCryptoSelect.value = crypto
     }
 
     /**
