@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -28,6 +29,19 @@ import com.nfsp00fpro.app.ui.NfSp00fIcons
 class MainActivity : ComponentActivity() {
     private lateinit var moduleManager: ModMainNfsp00f
     private var showSplash = mutableStateOf(true)
+    
+    // Runtime permission request launcher
+    private val requestPermissionsLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions.values.all { it }
+        if (granted) {
+            ModMainDebug.debugLog("MainActivity", "permissions_granted", mapOf("all_permissions" to "granted"))
+        } else {
+            val denied = permissions.filter { !it.value }.keys.joinToString(", ")
+            ModMainDebug.debugLog("MainActivity", "permissions_denied", mapOf("permissions" to denied))
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,6 +54,9 @@ class MainActivity : ComponentActivity() {
         
         // Initialize debug logger
         ModMainDebug.initialize(this)
+        
+        // Request runtime permissions
+        requestRequiredPermissions()
         
         // Initialize module manager
         moduleManager = ModMainNfsp00f(this)
@@ -61,6 +78,33 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         moduleManager.shutdown()
+    }
+    
+    /**
+     * Request runtime permissions required for app functionality.
+     * Requests: Bluetooth (SCAN/CONNECT), NFC, Location, Storage
+     */
+    private fun requestRequiredPermissions() {
+        val requiredPermissions = mutableListOf(
+            android.Manifest.permission.NFC,
+            android.Manifest.permission.ACCESS_FINE_LOCATION,
+            android.Manifest.permission.READ_EXTERNAL_STORAGE,
+            android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+        )
+        
+        // Add Bluetooth permissions based on API level
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            // Android 12+
+            requiredPermissions.add(android.Manifest.permission.BLUETOOTH_SCAN)
+            requiredPermissions.add(android.Manifest.permission.BLUETOOTH_CONNECT)
+        } else {
+            // Older Android
+            requiredPermissions.add(android.Manifest.permission.BLUETOOTH)
+            requiredPermissions.add(android.Manifest.permission.BLUETOOTH_ADMIN)
+        }
+        
+        ModMainDebug.debugLog("MainActivity", "permissions_request_start", mapOf("count" to requiredPermissions.size))
+        requestPermissionsLauncher.launch(requiredPermissions.toTypedArray())
     }
 }
 
