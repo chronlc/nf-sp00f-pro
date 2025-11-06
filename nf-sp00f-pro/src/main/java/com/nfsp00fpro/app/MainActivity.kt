@@ -20,6 +20,7 @@ import androidx.core.view.WindowCompat
 import com.nfsp00fpro.app.modules.ModMainNfsp00f
 import com.nfsp00fpro.app.modules.ModMainDebug
 import com.nfsp00fpro.app.screens.DashboardScreen
+import com.nfsp00fpro.app.screens.CardReadScreen
 import com.nfsp00fpro.app.screens.SplashScreen
 import com.nfsp00fpro.app.ui.NfSp00fIcons
 
@@ -210,7 +211,7 @@ fun NfSp00fProApp() {
         ) {
             when (selectedTab) {
                 0 -> DashboardScreen()
-                1 -> PlaceholderScreen("Card Reading")
+                1 -> CardReadScreen()
                 2 -> PlaceholderScreen("Database")
                 3 -> PlaceholderScreen("Debug Console")
             }

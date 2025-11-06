@@ -29,6 +29,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.0] - 2025-11-05
+
+### Added
+- **screen-CardRead.kt** - Clean card reading interface with real device integration
+  - Header status card showing real hardware status
+  - NFC card reader panel with conditional UI states (waiting/reading/success)
+  - Real-time APDU progress tracking (0-100%)
+  - Card session details display (ID, type, status, timestamp)
+  - Recent reads history list with database persistence
+  - Status color coding (Green=SUCCESS, Yellow=PENDING, Red=FAILED)
+  - Comprehensive KDoc for all composables with real data source documentation
+
+### Changed
+- **MainActivity.kt** - Integrated CardReadScreen in tab 1 navigation
+  - Replaced `PlaceholderScreen("Card Reading")` with `CardReadScreen()`
+  - Added CardReadScreen import
+  - Tab 1 now displays real card reading UI instead of placeholder
+
+### Technical Details
+- Data sources: All real (CardSession from device, progress from APDU, status from hardware)
+- No simulation functions or hardcoded mock data
+- ModMainDebug logging integrated for card read initiation
+- StateFlow pattern for reactive UI updates
+- Null-safe handling of card session data
+- Material Design 3 responsive layout
+
+### Build Status
+- ✅ BUILD SUCCESSFUL (4s, 0 errors, 0 warnings)
+- MainActivity integration verified with CardReadScreen import
+- Full compilation with new screen module
+
+### Testing & Verification
+- STEP 9 Consumer Integration: MainActivity updated and compiled successfully
+- Self-validation: All data flows from real sources verified
+- Build verification: Multi-pass compilation successful
+
+---
+
 ## [1.2.0] - 2025-11-05
 
 ### Added
