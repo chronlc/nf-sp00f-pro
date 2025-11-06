@@ -52,7 +52,7 @@ class MainActivity : ComponentActivity() {
                         showSplash.value = false
                     })
                 } else {
-                    NfSp00fProApp()
+                    NfSp00fProApp(moduleManager = moduleManager)
                 }
             }
         }
@@ -66,7 +66,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NfSp00fProApp() {
+fun NfSp00fProApp(moduleManager: ModMainNfsp00f) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
     Scaffold(
@@ -211,7 +211,7 @@ fun NfSp00fProApp() {
         ) {
             when (selectedTab) {
                 0 -> DashboardScreen()
-                1 -> CardReadScreen()
+                1 -> CardReadScreen(moduleManager = moduleManager)
                 2 -> PlaceholderScreen("Database")
                 3 -> PlaceholderScreen("Debug Console")
             }

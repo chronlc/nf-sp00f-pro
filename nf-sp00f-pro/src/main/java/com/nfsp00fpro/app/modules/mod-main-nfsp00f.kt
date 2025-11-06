@@ -256,6 +256,44 @@ class ModMainNfsp00f(private val context: Context) {
     fun isInitialized(): Boolean = isInitialized
 
     /**
+     * Enable NFC reader mode for tag discovery
+     * 
+     * Called when user initiates card read operation
+     * Enables the NFC adapter callback to listen for card taps
+     */
+    fun enableNfcReaderMode(activity: android.app.Activity) {
+        try {
+            if (androidNfcModule == null) {
+                logStatus("⚠ Android NFC module not initialized")
+                return
+            }
+            
+            androidNfcModule?.enableReaderMode(activity)
+            logStatus("✓ NFC reader mode enabled")
+        } catch (e: Exception) {
+            logStatus("✗ Failed to enable NFC reader mode: ${e.message}")
+        }
+    }
+
+    /**
+     * Disable NFC reader mode to conserve power
+     * 
+     * Called when user navigates away from card read screen
+     */
+    fun disableNfcReaderMode(activity: android.app.Activity) {
+        try {
+            if (androidNfcModule == null) {
+                return
+            }
+            
+            androidNfcModule?.disableReaderMode(activity)
+            logStatus("✓ NFC reader mode disabled")
+        } catch (e: Exception) {
+            logStatus("✗ Failed to disable NFC reader mode: ${e.message}")
+        }
+    }
+
+    /**
      * Shutdown all modules
      */
     fun shutdown() {

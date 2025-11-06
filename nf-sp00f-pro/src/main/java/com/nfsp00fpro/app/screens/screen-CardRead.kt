@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nfsp00fpro.app.modules.CardSession
 import com.nfsp00fpro.app.modules.ModMainDebug
+import com.nfsp00fpro.app.modules.ModMainNfsp00f
 import com.nfsp00fpro.app.ui.NfSp00fIcons
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -43,9 +44,10 @@ import java.util.Date
  * All displayed data is REAL - from device modules or database, never hardcoded
  */
 @Composable
-fun CardReadScreen() {
+fun CardReadScreen(moduleManager: ModMainNfsp00f?) {
     val context = LocalContext.current
-    val viewModel: CardReadViewModel = viewModel(factory = CardReadViewModel.Factory(context))
+    val activity = LocalContext.current as? android.app.Activity
+    val viewModel: CardReadViewModel = viewModel(factory = CardReadViewModel.Factory(context, moduleManager, activity))
 
     // Collect real state from ViewModel - all from database and device modules
     val cardData by viewModel.cardData.collectAsState()

@@ -1,5 +1,6 @@
 package com.nfsp00fpro.app.screens
 
+import android.app.Activity
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -7,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.nfsp00fpro.app.modules.CardSession
 import com.nfsp00fpro.app.modules.EmvDatabase
 import com.nfsp00fpro.app.modules.ModMainDebug
+import com.nfsp00fpro.app.modules.ModMainNfsp00f
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,7 +38,9 @@ import kotlinx.coroutines.launch
  */
 class CardReadViewModel(
     private val context: Context,
-    private val emvDatabase: EmvDatabase
+    private val emvDatabase: EmvDatabase,
+    private val moduleManager: ModMainNfsp00f? = null,
+    private val activity: Activity? = null
 ) : ViewModel() {
 
     // Real card session data from hardware reads (null until card is actually read by device)
@@ -116,6 +120,22 @@ class CardReadViewModel(
             )
 
             try {
+                // Enable NFC reader mode to start listening for card tap
+                if (moduleManager != null && activity != null) {
+                    moduleManager.enableNfcReaderMode(activity)
+                    ModMainDebug.debugLog(
+                        module = "CardReadViewModel",
+                        operation = "nfc_reader_mode_enabled",
+                        data = mapOf("timestamp" to System.currentTimeMillis().toString())
+                    )
+                } else {
+                    ModMainDebug.debugLog(
+                        module = "CardReadViewModel",
+                        operation = "reader_mode_error",
+                        data = mapOf("reason" to "moduleManager or activity null")
+                    )
+                }
+                
                 // System is now listening for real NFC device card read
                 // When actual device provides card data, it will be stored in database
                 // and _cardData will be updated with real session
@@ -127,7 +147,7 @@ class CardReadViewModel(
                 )
                 
                 // Update hardware status to show device is ready
-                _hardwareStatus.value = "Ready for card"
+                _hardwareStatus.value = "Ready for card - waiting for tap"
                 
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -150,13 +170,13 @@ class CardReadViewModel(
      * Factory for creating CardReadViewModel instances with real dependencies
      */
     companion object {
-        fun Factory(context: Context): ViewModelProvider.Factory {
+        fun Factory(context: Context, moduleManager: ModMainNfsp00f? = null, activity: Activity? = null): ViewModelProvider.Factory {
             return object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
                     // Inject real database - no mock objects
                     val database = EmvDatabase(context)
-                    return CardReadViewModel(context, database) as T
+                    return CardReadViewModel(context, database, moduleManager, activity) as T
                 }
             }
         }
