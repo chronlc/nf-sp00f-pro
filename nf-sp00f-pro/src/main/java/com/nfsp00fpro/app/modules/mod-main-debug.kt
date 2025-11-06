@@ -130,8 +130,18 @@ object ModMainDebug {
                 }
             }
 
-            // Log to Android logcat as well
-            Log.d(TAG, "[$module] $operation | Data: ${data?.toString() ?: "none"}")
+            // Log to Android logcat with clean uniform format
+            val dataStr = if (data != null && data.isNotEmpty()) {
+                data.entries.joinToString(", ") { (k, v) -> "$k=$v" }
+            } else {
+                ""
+            }
+            val logMsg = if (dataStr.isNotEmpty()) {
+                "[nf-sp00f-pro] $module | $operation | $dataStr"
+            } else {
+                "[nf-sp00f-pro] $module | $operation"
+            }
+            Log.d(TAG, logMsg)
 
             // Auto-export periodically (every 50 entries or on errors)
             if (logEntries.size % 50 == 0) {
@@ -179,7 +189,7 @@ object ModMainDebug {
                 }
             }
 
-            Log.d(TAG, "[APDU-$moduleName] CMD: $commandHex | RSP: $responseHex")
+            Log.d(TAG, "[nf-sp00f-pro] $moduleName | APDU | cmd_len=${command.size}, rsp_len=${response?.size ?: 0}")
 
             // Auto-export on every APDU (critical for debugging)
             CoroutineScope(Dispatchers.IO).launch {

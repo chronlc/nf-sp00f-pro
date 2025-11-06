@@ -353,6 +353,6 @@ class ModDeviceAndroidNfc(private val context: Context) {
      * Internal logging
      */
     private fun logStatus(message: String) {
-        println("[ModDeviceAndroidNfc] $message")
+        ModMainDebug.debugLog("ModDeviceAndroidNfc", "operation", mapOf("message" to message))
     }
 }

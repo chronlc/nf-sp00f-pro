@@ -761,7 +761,7 @@ class EmvReader(private val context: Context) {
      * Internal logging
      */
     private fun logStatus(message: String) {
-        println("[EmvReader] $message")
+        ModMainDebug.debugLog("EmvReader", "operation", mapOf("message" to message))
     }
 }
 

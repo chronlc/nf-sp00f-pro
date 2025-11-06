@@ -690,5 +690,5 @@ class EmvDatabase(private val context: Context) {
 // ============================================================================
 
 private fun logStatus(message: String) {
-    println("[EmvDatabase] $message")
+    ModMainDebug.debugLog("EmvDatabase", "operation", mapOf("message" to message))
 }

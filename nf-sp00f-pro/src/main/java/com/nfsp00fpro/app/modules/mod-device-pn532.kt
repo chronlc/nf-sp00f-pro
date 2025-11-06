@@ -393,6 +393,6 @@ class ModDevicePn532(private val context: Context) {
      * Internal logging
      */
     private fun logStatus(message: String) {
-        println("[ModDevicePn532] $message")
+        ModMainDebug.debugLog("ModDevicePn532", "operation", mapOf("message" to message))
     }
 }

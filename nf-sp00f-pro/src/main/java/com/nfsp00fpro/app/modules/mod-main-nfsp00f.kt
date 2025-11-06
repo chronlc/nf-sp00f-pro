@@ -312,10 +312,10 @@ class ModMainNfsp00f(private val context: Context) {
     }
 
     /**
-     * Internal logging
+     * Internal logging - delegated to ModMainDebug for unified output
      */
     private fun logStatus(message: String) {
-        println("[ModMainNfsp00f] $message")
+        ModMainDebug.debugLog("ModMainNfsp00f", "status", mapOf("message" to message))
     }
 }
 

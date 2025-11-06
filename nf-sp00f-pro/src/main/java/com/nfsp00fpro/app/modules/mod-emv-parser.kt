@@ -329,7 +329,7 @@ class EmvParser {
      * Internal logging
      */
     private fun logStatus(message: String) {
-        println("[EmvParser] $message")
+        ModMainDebug.debugLog("EmvParser", "operation", mapOf("message" to message))
     }
 
     companion object {
