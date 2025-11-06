@@ -1,11 +1,15 @@
 package com.nfsp00fpro.app.modules
 
+import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothSocket
 import android.content.Context
+import android.content.pm.PackageManager
 import android.hardware.usb.UsbManager
 import android.nfc.NfcAdapter
+import android.os.Build
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -40,6 +44,10 @@ class ModMainNfsp00f(private val context: Context) {
     // Module status
     private var isInitialized = false
     private var healthCheckInterval = 5000L // 5 seconds
+    
+    // Permission status tracking
+    private var permissionStatus: Map<String, Boolean> = emptyMap()
+    private var permissionsChecked = false
 
     // Coroutine scope for async operations
     private val moduleScope = CoroutineScope(Dispatchers.IO)
@@ -48,18 +56,22 @@ class ModMainNfsp00f(private val context: Context) {
      * Initialize all modules
      *
      * This method:
-     * 1. Initializes PN532 module (with Bluetooth auto-connect)
-     * 2. Initializes Android NFC module
-     * 3. Initializes EMV Parser module
-     * 4. Initializes EMV Reader module
-     * 5. Starts health check monitoring
-     * 6. Sets initialized flag
+     * 1. Checks all required permissions at startup
+     * 2. Initializes PN532 module (with Bluetooth auto-connect)
+     * 3. Initializes Android NFC module
+     * 4. Initializes EMV Parser module
+     * 5. Initializes EMV Reader module
+     * 6. Starts health check monitoring
+     * 7. Sets initialized flag
      */
     fun initialize() {
         try {
             ModMainDebug.debugLog("ModMainNfsp00f", "initialize_start", mapOf(
                 "timestamp" to System.currentTimeMillis()
             ))
+
+            // CHECK PERMISSIONS FIRST
+            checkAllPermissions()
 
             // Initialize PN532 Module
             pn532Module = ModDevicePn532(context)
@@ -316,6 +328,174 @@ class ModMainNfsp00f(private val context: Context) {
      */
     private fun logStatus(message: String) {
         ModMainDebug.debugLog("ModMainNfsp00f", "status", mapOf("message" to message))
+    }
+
+    // ============================================================================
+    // PERMISSIONS MANAGEMENT - Check and validate all required permissions
+    // ============================================================================
+
+    /**
+     * Check all required permissions at app startup
+     * 
+     * Required Permissions:
+     * - Bluetooth (SCAN, CONNECT, ADMIN)
+     * - NFC
+     * - Location (for Bluetooth scanning)
+     * - File Storage (for logging and data persistence)
+     */
+    private fun checkAllPermissions() {
+        permissionStatus = mutableMapOf()
+        
+        // Runtime permissions required on Android 6.0+ (API 23+)
+        val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            listOf(
+                "BLUETOOTH_SCAN",
+                "BLUETOOTH_CONNECT",
+                "NFC",
+                "ACCESS_FINE_LOCATION",
+                "ACCESS_COARSE_LOCATION",
+                "READ_EXTERNAL_STORAGE",
+                "WRITE_EXTERNAL_STORAGE"
+            )
+        } else {
+            listOf(
+                "BLUETOOTH",
+                "BLUETOOTH_ADMIN",
+                "NFC",
+                "ACCESS_FINE_LOCATION",
+                "ACCESS_COARSE_LOCATION",
+                "READ_EXTERNAL_STORAGE",
+                "WRITE_EXTERNAL_STORAGE"
+            )
+        }
+
+        // Check each permission
+        requiredPermissions.forEach { permissionName ->
+            val permission = when (permissionName) {
+                "BLUETOOTH_SCAN" -> Manifest.permission.BLUETOOTH_SCAN
+                "BLUETOOTH_CONNECT" -> Manifest.permission.BLUETOOTH_CONNECT
+                "BLUETOOTH" -> Manifest.permission.BLUETOOTH
+                "BLUETOOTH_ADMIN" -> Manifest.permission.BLUETOOTH_ADMIN
+                "NFC" -> Manifest.permission.NFC
+                "ACCESS_FINE_LOCATION" -> Manifest.permission.ACCESS_FINE_LOCATION
+                "ACCESS_COARSE_LOCATION" -> Manifest.permission.ACCESS_COARSE_LOCATION
+                "READ_EXTERNAL_STORAGE" -> Manifest.permission.READ_EXTERNAL_STORAGE
+                "WRITE_EXTERNAL_STORAGE" -> Manifest.permission.WRITE_EXTERNAL_STORAGE
+                else -> null
+            }
+
+            if (permission != null) {
+                val isGranted = ContextCompat.checkSelfPermission(
+                    context,
+                    permission
+                ) == PackageManager.PERMISSION_GRANTED
+                
+                (permissionStatus as MutableMap)[permissionName] = isGranted
+                
+                ModMainDebug.debugLog(
+                    "ModMainNfsp00f",
+                    "permission_check",
+                    mapOf(
+                        "permission" to permissionName,
+                        "granted" to isGranted.toString()
+                    )
+                )
+
+                logStatus(if (isGranted) "✓ $permissionName granted" else "✗ $permissionName denied")
+            }
+        }
+
+        permissionsChecked = true
+        
+        // Log summary
+        val grantedCount = permissionStatus.values.count { it }
+        val totalCount = permissionStatus.size
+        val allGranted = grantedCount == totalCount
+        
+        ModMainDebug.debugLog(
+            "ModMainNfsp00f",
+            "permissions_check_complete",
+            mapOf(
+                "granted" to grantedCount.toString(),
+                "total" to totalCount.toString(),
+                "all_granted" to allGranted.toString(),
+                "status" to if (allGranted) "OK" else "INCOMPLETE"
+            )
+        )
+
+        logStatus(
+            if (allGranted) 
+                "✓ All permissions granted ($grantedCount/$totalCount)" 
+            else 
+                "⚠ Some permissions denied ($grantedCount/$totalCount)"
+        )
+    }
+
+    /**
+     * Get current permission status
+     * 
+     * @param permissionName Name of permission to check (e.g., "BLUETOOTH_SCAN", "NFC")
+     * @return Boolean indicating if permission is granted, or null if not checked
+     */
+    fun isPermissionGranted(permissionName: String): Boolean? {
+        return permissionStatus[permissionName]
+    }
+
+    /**
+     * Check if all critical permissions are granted
+     * 
+     * Critical permissions are those required for basic app functionality:
+     * - Bluetooth connectivity
+     * - NFC communication
+     * - File storage
+     * 
+     * @return Boolean indicating if all critical permissions are available
+     */
+    fun areAllCriticalPermissionsGranted(): Boolean {
+        val criticalPermissions = listOf(
+            "BLUETOOTH_SCAN",
+            "BLUETOOTH_CONNECT",
+            "NFC",
+            "WRITE_EXTERNAL_STORAGE"
+        )
+        
+        return criticalPermissions.all { 
+            permissionStatus[it] == true || permissionStatus[it.replace("_", "")] == true
+        }
+    }
+
+    /**
+     * Get all permission statuses as a formatted string
+     * 
+     * @return Formatted string with all permission statuses for logging/display
+     */
+    fun getPermissionStatusString(): String {
+        if (!permissionsChecked) {
+            return "Permissions not yet checked"
+        }
+
+        val granted = permissionStatus.filter { it.value }
+        val denied = permissionStatus.filter { !it.value }
+
+        val result = StringBuilder()
+        result.append("GRANTED (${granted.size}):\n")
+        granted.keys.forEach { result.append("  ✓ $it\n") }
+        
+        if (denied.isNotEmpty()) {
+            result.append("\nDENIED (${denied.size}):\n")
+            denied.keys.forEach { result.append("  ✗ $it\n") }
+        }
+
+        return result.toString()
+    }
+
+    /**
+     * Get all permission statuses as a map
+     * 
+     * @return Map of permission names to granted status
+     */
+    fun getPermissionStatus(): Map<String, Boolean> {
+        return permissionStatus.toMap()
     }
 }
 
