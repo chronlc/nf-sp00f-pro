@@ -10,10 +10,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- N/A
+- **APDU Terminal Card**: Real-time APDU log display on Card Read Screen (STEP 7 feature)
+  - Integrated with ModMainDebug centralized logger
+  - Displays last 20 debug entries in terminal-style monospace format
+  - Color-coded output: Green for TX operations, Blue for RX/data
+  - Periodic 500ms refresh for real-time updates
+  - Terminal header shows entry count and status
+  - Empty state displays ">>> Waiting for card communication..." when idle
+  - All data sourced from actual module operations, not simulation
 
 ### Changed
-- N/A
+- **CardReadViewModel**: Added apduLog StateFlow and refreshApduLogs() method
+  - Periodically fetches latest entries from ModMainDebug (every 500ms)
+  - Formats entries as "[Module] operation | key=value" strings
+  - Logs refresh operations to ModMainDebug for tracking
+  - Init block launches coroutine for continuous log updates
+
+- **Card Read Screen**: Added ApduTerminalSection and ApduLogLine composables
+  - ApduTerminalSection: Terminal card with dark background, scrollable content
+  - ApduLogLine: Formatted log line with dynamic color coding
+  - Integrated into main screen layout between RecentReadsSection and spacing
+  - Uses monospace font (Courier New equivalent) for authentic terminal appearance
+  - Max height 150-250dp with vertical scroll when content exceeds bounds
 
 ### Deprecated
 - N/A

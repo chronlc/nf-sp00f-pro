@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nfsp00fpro.app.modules.CardSession
 import com.nfsp00fpro.app.modules.ModMainDebug
@@ -55,6 +56,7 @@ fun CardReadScreen(moduleManager: ModMainNfsp00f? = null) {
     val readingProgress by viewModel.readingProgress.collectAsState()
     val hardwareStatus by viewModel.hardwareStatus.collectAsState()
     val recentReads by viewModel.recentReads.collectAsState(initial = emptyList())
+    val apduLog by viewModel.apduLog.collectAsState()
 
     Column(
         modifier = Modifier
@@ -90,6 +92,9 @@ fun CardReadScreen(moduleManager: ModMainNfsp00f? = null) {
 
         // Recent card reads from database history (real persistent data)
         RecentReadsSection(recentReads = recentReads)
+
+        // APDU Terminal - Real-time log display from ModMainDebug
+        ApduTerminalSection(apduLog = apduLog)
 
         Spacer(modifier = Modifier.height(8.dp))
     }
@@ -262,6 +267,117 @@ private fun CardReaderPanel(
             }
         }
     }
+}
+
+/**
+ * APDU Terminal Section - Real-time log display from ModMainDebug
+ *
+ * @param apduLog List of formatted log entries from ModMainDebug
+ *
+ * Features:
+ * - Terminal-style monospace display
+ * - Color-coded entries (green for transmit, blue for receive)
+ * - Scrollable with max height (scrolls to latest)
+ * - Empty state: ">>> Waiting for card communication..."
+ * - Displays last 20 entries in chronological order
+ *
+ * Data source: ModMainDebug circular buffer (all module logs)
+ */
+@Composable
+private fun ApduTerminalSection(apduLog: List<String>) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1F1F)),
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            // Terminal header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "APDU Terminal",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF4CAF50)
+                    )
+                )
+
+                Text(
+                    "${apduLog.size} entries",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF888888)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Terminal display area - Monospace log viewer
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 150.dp, max = 250.dp)
+                    .background(Color(0xFF0F1419), RoundedCornerShape(6.dp))
+                    .padding(12.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                if (apduLog.isEmpty()) {
+                    // Empty state - waiting for logs
+                    Text(
+                        ">>> Waiting for card communication...",
+                        color = Color(0xFF4CAF50),
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                        ),
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                } else {
+                    // Display all log entries
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(apduLog) { logEntry ->
+                            ApduLogLine(logEntry = logEntry)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Individual APDU log line formatter
+ *
+ * @param logEntry Formatted log string from CardReadViewModel
+ *
+ * Format: "[Module] operation | key=value, key2=value2"
+ * Colors: Dynamically chosen based on content (TX green, data blue)
+ */
+@Composable
+private fun ApduLogLine(logEntry: String) {
+    // Color code based on content: green for TX/success, blue for data/info
+    val textColor = when {
+        logEntry.contains("TX>") || logEntry.contains("transmit") -> Color(0xFF4CAF50) // Success green
+        logEntry.contains("RX>") || logEntry.contains("receive") -> Color(0xFF64B5F6) // Info blue
+        else -> Color(0xFF888888) // Default gray
+    }
+
+    Text(
+        text = logEntry,
+        color = textColor,
+        style = MaterialTheme.typography.bodySmall.copy(
+            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+            fontSize = 10.sp
+        ),
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 /**
