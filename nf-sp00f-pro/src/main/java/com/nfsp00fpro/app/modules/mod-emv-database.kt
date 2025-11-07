@@ -5,11 +5,11 @@ import androidx.room.Database
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Ignore
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverter
-import androidx.room.TypeConverters
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
@@ -52,7 +52,10 @@ import java.util.UUID
  * Stores metadata for the entire scan including timestamp,
  * contactless flag, and overall status
  */
-@Entity(tableName = "card_sessions")
+@Entity(
+    tableName = "card_sessions",
+    indices = [Index(value = ["sessionId"], unique = true)]
+)
 data class CardSession(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
@@ -215,17 +218,9 @@ data class TlvTag(
 // Type Converters (for ByteArray storage in Room)
 // ============================================================================
 
-class ByteArrayConverter {
-    @TypeConverter
-    fun fromByteArray(value: ByteArray?): ByteArray? = value
-
-    @TypeConverter
-    fun toByteArray(value: ByteArray?): ByteArray? = value
-}
-
-// ============================================================================
-// DAO (Data Access Objects)
-// ============================================================================
+/**
+ * DAO (Data Access Objects)
+ */
 
 @Dao
 interface CardSessionDao {
@@ -317,7 +312,6 @@ interface TlvTagDao {
     version = 1,
     exportSchema = false
 )
-@TypeConverters(ByteArrayConverter::class)
 abstract class EmvCardDatabase : RoomDatabase() {
     abstract fun cardSessionDao(): CardSessionDao
     abstract fun aidRecordDao(): AidRecordDao

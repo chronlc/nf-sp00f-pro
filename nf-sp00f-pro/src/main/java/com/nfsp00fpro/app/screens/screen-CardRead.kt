@@ -337,12 +337,12 @@ private fun ApduTerminalSection(apduLog: List<String>) {
                         modifier = Modifier.align(Alignment.Center)
                     )
                 } else {
-                    // Display all log entries
-                    LazyColumn(
+                    // Display all log entries in scrollable Column (not LazyColumn to avoid nested scroll conflicts)
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        items(apduLog) { logEntry ->
+                        apduLog.forEach { logEntry ->
                             ApduLogLine(logEntry = logEntry)
                         }
                     }
