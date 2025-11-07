@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.nfsp00fpro.app.modules.CardSession
 import com.nfsp00fpro.app.modules.EmvDatabase
+import com.nfsp00fpro.app.modules.EmvReader
 import com.nfsp00fpro.app.modules.ModMainDebug
 import com.nfsp00fpro.app.modules.ModMainNfsp00f
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,6 +43,9 @@ class CardReadViewModel(
     private val moduleManager: ModMainNfsp00f? = null,
     private val activity: Activity? = null
 ) : ViewModel() {
+
+    // EMV Reader module for actual card data extraction from hardware
+    private val emvReader = EmvReader(context)
 
     // Real card session data from hardware reads (null until card is actually read by device)
     private val _cardData = MutableStateFlow<CardSession?>(null)
@@ -107,6 +111,14 @@ class CardReadViewModel(
     val isRocaVulnerable: StateFlow<Boolean> = _isRocaVulnerable.asStateFlow()
 
     init {
+        // Initialize EMV reader module with real device access
+        emvReader.initialize()
+        ModMainDebug.debugLog(
+            module = "CardReadViewModel",
+            operation = "emv_reader_initialized",
+            data = mapOf("timestamp" to System.currentTimeMillis().toString())
+        )
+        
         // Load real data from database on initialization
         loadRecentReads()
         
@@ -183,8 +195,8 @@ class CardReadViewModel(
                 }
                 
                 // System is now listening for real NFC device card read
-                // When actual device provides card data, it will be stored in database
-                // and _cardData will be updated with real session
+                // When device detects card, onCardDetected() callback will be triggered
+                // to call emvReader() and process the card data
                 
                 ModMainDebug.debugLog(
                     module = "CardReadViewModel",
@@ -195,9 +207,13 @@ class CardReadViewModel(
                 // Update hardware status to show device is ready
                 _hardwareStatus.value = "Ready for card - waiting for tap"
                 
+                // Keep _isReading = true to show Stop button while listening
+                // It will be set to false when stopCardReading() is called or card read completes
+                
             } catch (e: Exception) {
                 e.printStackTrace()
                 _hardwareStatus.value = "Read Error"
+                _isReading.value = false
                 
                 // Log real error from device interaction
                 ModMainDebug.debugLog(
@@ -205,9 +221,73 @@ class CardReadViewModel(
                     operation = "card_read_error",
                     data = mapOf("error" to (e.message ?: "Unknown error"))
                 )
-            } finally {
-                _isReading.value = false
-                _readingProgress.value = 0
+            }
+        }
+    }
+
+    /**
+     * Called when device detects a card tap
+     * This is where we actually read the card data using EmvReader module
+     * 
+     * Data source: Real NFC device card detection callback
+     * Processing: emvReader() extracts all card data and saves to database
+     * Update: _cardData updated with real CardSession from database
+     */
+    fun onCardDetected() {
+        viewModelScope.launch {
+            try {
+                ModMainDebug.debugLog(
+                    module = "CardReadViewModel",
+                    operation = "card_detected",
+                    data = mapOf("timestamp" to System.currentTimeMillis().toString())
+                )
+                
+                _hardwareStatus.value = "Reading card..."
+                _readingProgress.value = 25
+                
+                // Call EMV reader module to extract all card data (AIDs, Track 2, PAN, etc.)
+                // This is production code that reads from actual hardware, not simulation
+                emvReader.emvReader(isContactless = true)
+                
+                _readingProgress.value = 50
+                
+                // Get the session that was created and populated by emvReader
+                // emvReader creates session, reads all AIDs, saves APDU logs, stores TLV tags
+                val sessions = emvDatabase.getRecentSessions(limit = 1)
+                if (sessions.isNotEmpty()) {
+                    _cardData.value = sessions[0]
+                    _readingProgress.value = 100
+                    _hardwareStatus.value = "Card read successfully"
+                    
+                    ModMainDebug.debugLog(
+                        module = "CardReadViewModel",
+                        operation = "card_data_loaded",
+                        data = mapOf(
+                            "session_id" to (sessions[0].sessionId),
+                            "status" to (sessions[0].status)
+                        )
+                    )
+                } else {
+                    _hardwareStatus.value = "Card read completed but data not found"
+                    ModMainDebug.debugLog(
+                        module = "CardReadViewModel",
+                        operation = "card_read_no_data",
+                        data = mapOf("timestamp" to System.currentTimeMillis().toString())
+                    )
+                }
+                
+                // Keep reading state true so Stop button visible
+                // User can review data or click Stop to exit
+                
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _hardwareStatus.value = "Card read error: ${e.message}"
+                
+                ModMainDebug.debugLog(
+                    module = "CardReadViewModel",
+                    operation = "card_detection_error",
+                    data = mapOf("error" to (e.message ?: "Unknown error"))
+                )
             }
         }
     }

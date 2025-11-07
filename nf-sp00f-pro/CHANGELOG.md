@@ -10,12 +10,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **EmvReader Integration in CardReadViewModel**: Production card reading workflow
+  - CardReadViewModel now initializes EmvReader module and calls emvReader() when card detected
+  - Added onCardDetected() callback method for NFC detection integration
+  - Card data automatically extracted, parsed, and saved to database via EmvReader module
+  - Progress updates: 0→25→50→100% during card reading
+  - Real data flow: NFC tap → emvReader() → database → UI StateFlow
+
+### Fixed
+- **Stop Button Display Bug**: Stop button now visible during card reading
+  - Root cause: startCardReading() was setting _isReading=false in finally block
+  - Solution: Removed finally block, keep _isReading=true until stopCardReading() called
+  - Stop button conditional visibility now works: `if (isReading) { Stop Button }`
+  - User can now tap Stop during reading to gracefully terminate NFC polling
+
+### Architecture
+- All card reading logic moved to modules (EmvReader, EmvDatabase)
+- Screen files only handle UI display and state reflection
+- Module-to-ViewModel pattern: modules perform operations, viewModel orchestrates
+
+### Added (Previous)
 - **Reader Selection & Control Panel**: Dynamic NFC reader selection on Card Read Screen
   - Dropdown selector for "Android NFC" (built-in) and "PN532 Bluetooth" (wireless) readers
   - Dropdown only displays when no card is being read (clean UI)
   - Stop button appears during card reading for graceful termination
   - Clicking Stop calls moduleManager.disableNfcReaderMode() to halt NFC listening
-  - Reader selection persists in ViewM and logs to ModMainDebug
+  - Reader selection persists in ViewModel and logs to ModMainDebug
   - All UI state driven by real device status, no hardcoded values
 
 - **APDU Terminal Card**: Real-time APDU log display on Card Read Screen (STEP 7 feature)
