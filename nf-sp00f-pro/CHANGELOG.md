@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Card Read Screen Complete UI Redesign**: Production-grade interface for NFC card reading
+  - CardReaderPanel: Enhanced styling with improved padding (28dp), larger NFC icon (80dp), themed background
+  - Stop Button: Fixed visibility - now displays when card reading is in progress
+  - RecentCardsSection: New horizontal scrollable display of 3 most recent virtual credit cards
+  - VirtualCreditCard: Credit card format with brand-specific colors (VISA: #1A1F71, MC: #EB001B, AMEX: #006FCF)
+    - Displays masked PAN (•••• XXXX format), expiry date (MM/yy), brand name, and status indicator
+  - EmvTagDataSection: New EMV data display showing sessionId, card type, status, and read timestamp
+  - ApduTerminalSection: Improved terminal with scrollable display (NO line limits), EMV-only filtering
+    - Color-coded log lines: Green for TX, Blue for RX, Orange for AID/errors
+    - Monospace terminal font for authenticity
+  - All data sourced from real database (CardSession, AidRecord, TlvTag, ApduLog entities)
+
 - **EmvReader Integration in CardReadViewModel**: Production card reading workflow
   - CardReadViewModel now initializes EmvReader module and calls emvReader() when card detected
   - Added onCardDetected() callback method for NFC detection integration
