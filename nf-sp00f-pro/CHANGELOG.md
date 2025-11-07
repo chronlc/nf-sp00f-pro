@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Reader Selection & Control Panel**: Dynamic NFC reader selection on Card Read Screen
+  - Dropdown selector for "Android NFC" (built-in) and "PN532 Bluetooth" (wireless) readers
+  - Dropdown only displays when no card is being read (clean UI)
+  - Stop button appears during card reading for graceful termination
+  - Clicking Stop calls moduleManager.disableNfcReaderMode() to halt NFC listening
+  - Reader selection persists in ViewM and logs to ModMainDebug
+  - All UI state driven by real device status, no hardcoded values
+
 - **APDU Terminal Card**: Real-time APDU log display on Card Read Screen (STEP 7 feature)
   - Integrated with ModMainDebug centralized logger
   - Displays last 20 debug entries in terminal-style monospace format
