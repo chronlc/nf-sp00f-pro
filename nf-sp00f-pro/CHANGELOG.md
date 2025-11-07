@@ -10,26 +10,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **RoGuE TeRMiNaL Screen - Terminal-Style NFC Reader Interface** (Major redesign)
-  - Complete screen overhaul with dark terminal aesthetic (monospace fonts, green-on-black colors)
-  - Terminal Header: Centered "RoGuE TeRMiNaL" title (white, bold, monospace)
-  - Reader Selection: Side-by-side dropdowns for NFC reader (default: Android NFC) and card type (default: EMV)
-  - Control Buttons: "Read Card(s)" and "Stop" buttons with proper enable/disable lifecycle
-    - Read Card(s) button: Calls viewModel.startCardReading() to begin EMV card polling via mod-emv-read
-    - Stop button: Calls viewModel.stopCardReading() to halt polling (visible only when reading active)
-  - Statistics Card: 3-box display showing real-time metrics from database:
-    - Cards Scanned: Count of CardSession records
-    - APDUs: Count of ApduLog records (TX/RX commands and responses)
-    - Tags: Count of parsed TLV tag records from all reads
-  - Recent Cards Section: Horizontal scrollable virtual credit card display (3 most recent)
-    - Brand-specific colors: VISA (#1A1F71 blue), MASTERCARD (#EB001B red), AMEX (#006FCF blue)
-    - Displays: Brand name, masked PAN (•••• XXXX format), expiry date (MM/yy), status indicator
-  - EMV Data Display: Shows parsed EMV data from current card session
-    - Displays: Session ID, card type (Contactless/Contact), status, read timestamp
-  - Terminal Log Box: Scrollable APDU communication log (NO line limit)
-    - Shows all RX/TX APDUs and card-related operations from ModMainDebug logs
-    - Color-coded by operation: Green (TX), Cyan (RX), Yellow (AID/errors), Gray (other)
-    - Monospace terminal font for authenticity
+- **Professional Sleek Card Reading Screen** (Complete UI redesign - v1.4.0)
+  - **Design Philosophy**: Clean, data-focused, premium production-ready interface
+  - **Reference Design**: Based on sleek EMV scanner reference design for professional appearance
+  - **Color Scheme**: Professional dark blue theme (Navy #0A0E27 background, #131C42 cards) with strategic accent colors
+  - **Status Header Card**:
+    - EMV CARD SCANNER title in success green (#4CAF50)
+    - Reader Status chip with checkmark/error icon (green=connected, red=no reader)
+    - Statistics row: Cards scanned, APDUs, Tags (from real database counts)
+  - **Control Panel Card**:
+    - Reader dropdown: "Android NFC", "PN532 USB", "PN532 BT" (default Android NFC)
+    - Protocol dropdown: "EMV/ISO-DEP", "Auto-Detect" (default EMV/ISO-DEP)
+    - Start/Stop Scan button with icons (Play icon start, Stop icon stop, colors dynamic)
+    - Button colors: Success green when idle, error red when scanning
+  - **Advanced Settings Section** (collapsible):
+    - Transaction Amount field (numeric input)
+    - TTQ field (hex input for terminal transaction qualifiers)
+    - Transaction Type dropdown (Purchase, Withdrawal, Refund)
+    - Cryptographic Select dropdown (ARQC, TC, AAC)
+  - **ROCA Vulnerability Status Card**:
+    - Shown only when ROCA analysis data available from database
+    - Background color indicates status: Green (#1B5E20) safe, Red (#7F0000) vulnerable
+    - Icon: Checkmark (safe) or Warning (vulnerable) with appropriate coloring
+  - **Active Cards Section**:
+    - Title: "ACTIVE CARDS (n)" in success green
+    - Horizontal scrollable LazyRow of virtual cards
+    - Each card shows: Card status, session ID prefix, blue gradient background (#1A237E)
+    - Pagination info: "X cards scanned - scroll to view all" when > 3 cards
+  - **EMV Data Display Section**:
+    - Title: "EMV DATA EXTRACTED (n fields)" in success green
+    - Organized key-value display of parsed EMV tags from database
+    - Each field: Key (uppercase, secondary color), Value (success green, bold)
+    - Scrollable LazyColumn with max height 300dp
+  - **APDU Terminal Section**:
+    - Title: "APDU TERMINAL" in success green with command count
+    - Black terminal background (#0D0D0D) with monospace font
+    - Shows last 50 APDU entries from ModMainDebug logs
+    - Green-on-black aesthetic (#4CAF50 text, #0D0D0D background)
+    - Placeholder text: ">>> Waiting for card communication..." when no APDUs yet
+  - **Data Sources**: ALL real from hardware/database, ZERO mock/simulation:
+    - CardSession from device NFC reads (real sessions persisted in database)
+    - APDU logs from ModMainDebug (real TX/RX communication logs)
+    - EMV data from parsed TLV tags in database (real card data extraction)
+    - Statistics from database count queries (real count operations)
+    - ROCA analysis from EmvReader module (real cryptographic analysis)
+  - **Professional Theme Objects**:
+    - CardReadingTheme: Complete color palette (16 colors for all UI states)
+    - CardReadingSpacing: Consistent spacing scale (Tiny 2dp to Huge 32dp)
+    - CardReadingRadius: Rounded corner radius scale (Small 4dp to ExtraLarge 24dp)
+    - CardReadingDimensions: Standard component sizes (button heights, terminal height)
+  - **KDoc Comments**: Every composable documented with purpose, data sources, and display logic
+  - **Production Code**: Zero hardcoded data, zero simulation functions, zero test stubs
 
 - **CardReadViewModel Enhancements**: New stats capability
   - Added CardReadStats data class: cardsScanned, apduCount, tagsCount
@@ -43,12 +74,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added getTlvTagCount(): Total TlvTag records (parsed EMV tags count)
   - Added DAO methods in CardSessionDao, ApduLogDao, TlvTagDao for efficient queries
 
-- **Card Read Screen Complete UI Redesign**: Production-grade interface for NFC card reading
-  - CardReaderPanel: Enhanced styling with improved padding (28dp), larger NFC icon (80dp), themed background
-  - Stop Button: Fixed visibility - now displays when card reading is in progress
-  - RecentCardsSection: New horizontal scrollable display of 3 most recent virtual credit cards
-  - VirtualCreditCard: Credit card format with brand-specific colors (VISA: #1A1F71, MC: #EB001B, AMEX: #006FCF)
-    - Displays masked PAN (•••• XXXX format), expiry date (MM/yy), brand name, and status indicator
   - EmvTagDataSection: New EMV data display showing sessionId, card type, status, and read timestamp
   - ApduTerminalSection: Improved terminal with scrollable display (NO line limits), EMV-only filtering
     - Color-coded log lines: Green for TX, Blue for RX, Orange for AID/errors
