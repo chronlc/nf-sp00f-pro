@@ -168,6 +168,9 @@ private fun CardReaderPanel(
     readingProgress: Int,
     onStartRead: () -> Unit
 ) {
+    val viewModel: CardReadViewModel = viewModel(factory = CardReadViewModel.Factory(LocalContext.current, null, null))
+    val selectedReader by viewModel.selectedReader.collectAsState()
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -181,47 +184,54 @@ private fun CardReaderPanel(
                 .fillMaxWidth()
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            if (cardData == null) {
-                // Real data not yet available - waiting for device input
-                NfSp00fIcons.Nfc(
-                    modifier = Modifier.size(64.dp)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    "Ready for Card",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = Color(0xFFFFFFFF),
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "Tap card to NFC reader",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF888888),
-                    textAlign = TextAlign.Center
+            // Reader Selection Dropdown (replaces static card when not reading)
+            if (!isReading && cardData == null) {
+                ReaderSelectionDropdown(
+                    selectedReader = selectedReader,
+                    onReaderSelected = { reader ->
+                        viewModel.selectReader(reader)
+                    }
                 )
             } else {
-                // Real card data successfully read from device
-                Icon(
-                    Icons.Default.CheckCircle,
-                    contentDescription = "Card Read",
-                    tint = Color(0xFF4CAF50),
-                    modifier = Modifier.size(64.dp)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    "Card Read Successfully",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = Color(0xFF4CAF50),
-                    textAlign = TextAlign.Center
-                )
+                // Show card status when reading or card was read
+                if (cardData == null) {
+                    // Real data not yet available - waiting for device input
+                    NfSp00fIcons.Nfc(
+                        modifier = Modifier.size(64.dp)
+                    )
+                    Text(
+                        "Ready for Card",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = Color(0xFFFFFFFF),
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        "Tap card to NFC reader",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF888888),
+                        textAlign = TextAlign.Center
+                    )
+                } else {
+                    // Real card data successfully read from device
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = "Card Read",
+                        tint = Color(0xFF4CAF50),
+                        modifier = Modifier.size(64.dp)
+                    )
+                    Text(
+                        "Card Read Successfully",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = Color(0xFF4CAF50),
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
 
             if (isReading) {
                 // Real progress from actual device APDU transaction (0-100%)
-                Spacer(modifier = Modifier.height(24.dp))
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -242,28 +252,136 @@ private fun CardReaderPanel(
                 }
             }
 
-            // Start/Stop reading button - triggers real device interaction
-            Spacer(modifier = Modifier.height(24.dp))
-            Button(
-                onClick = onStartRead,
-                enabled = !isReading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF4CAF50),
-                    disabledContainerColor = Color(0xFF666666)
-                ),
-                shape = RoundedCornerShape(8.dp)
+            // Control Buttons - Start/Stop reading
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // Start Reading Button
+                Button(
+                    onClick = onStartRead,
+                    enabled = !isReading,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4CAF50),
+                        disabledContainerColor = Color(0xFF666666)
+                    ),
+                    shape = RoundedCornerShape(8.dp)
                 ) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = "Read", tint = Color.Black)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Start Reading", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = "Read", tint = Color.Black)
+                        Text("Start", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
                 }
+
+                // Stop Reading Button (only visible when reading)
+                if (isReading) {
+                    Button(
+                        onClick = {
+                            viewModel.stopCardReading()
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFEF5350)
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(Icons.Default.Stop, contentDescription = "Stop", tint = Color.Black)
+                            Text("Stop", color = Color.Black, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Reader Selection Dropdown
+ * 
+ * @param selectedReader Currently selected reader name
+ * @param onReaderSelected Callback when reader is selected
+ * 
+ * Shows available readers based on device hardware:
+ * - "Android NFC" - Built-in NFC chip
+ * - "PN532 Bluetooth" - External Bluetooth device
+ */
+@Composable
+private fun ReaderSelectionDropdown(
+    selectedReader: String?,
+    onReaderSelected: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    
+    val readers = listOf(
+        "Android NFC - Built-in reader",
+        "PN532 Bluetooth - Wireless device"
+    )
+    
+    Box(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        OutlinedButton(
+            onClick = { expanded = !expanded },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    selectedReader ?: "Select NFC Reader",
+                    color = if (selectedReader != null) Color(0xFFFFFFFF) else Color(0xFF888888),
+                    fontWeight = FontWeight.SemiBold
+                )
+                Icon(
+                    Icons.Default.ArrowDropDown,
+                    contentDescription = "Dropdown",
+                    tint = Color(0xFF4CAF50),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .background(Color(0xFF1B1F1F))
+        ) {
+            readers.forEach { reader ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            reader,
+                            color = Color(0xFFFFFFFF),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    },
+                    onClick = {
+                        onReaderSelected(reader)
+                        expanded = false
+                    },
+                    modifier = Modifier.background(
+                        if (selectedReader == reader) Color(0xFF333333) else Color(0xFF1B1F1F)
+                    )
+                )
             }
         }
     }

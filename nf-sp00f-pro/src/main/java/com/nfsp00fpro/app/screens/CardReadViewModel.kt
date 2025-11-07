@@ -212,7 +212,55 @@ class CardReadViewModel(
         }
     }
 
-    // UI Control Methods
+    /**
+     * Stop real NFC card reading from actual device
+     * Disables NFC reader mode to conserve power and stop detecting cards
+     * Called when user clicks Stop Reading button
+     */
+    fun stopCardReading() {
+        viewModelScope.launch {
+            try {
+                // Disable NFC reader mode to stop listening for card taps
+                if (moduleManager != null && activity != null) {
+                    moduleManager.disableNfcReaderMode(activity)
+                    ModMainDebug.debugLog(
+                        module = "CardReadViewModel",
+                        operation = "nfc_reader_mode_disabled",
+                        data = mapOf("timestamp" to System.currentTimeMillis().toString())
+                    )
+                } else {
+                    ModMainDebug.debugLog(
+                        module = "CardReadViewModel",
+                        operation = "reader_mode_disable_error",
+                        data = mapOf("reason" to "moduleManager or activity null")
+                    )
+                }
+
+                // Update hardware status to show device is ready but not reading
+                _hardwareStatus.value = "Ready - Idle (click Start to read)"
+                
+                ModMainDebug.debugLog(
+                    module = "CardReadViewModel",
+                    operation = "card_read_stop",
+                    data = mapOf("timestamp" to System.currentTimeMillis().toString())
+                )
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _hardwareStatus.value = "Stop Error"
+                
+                // Log real error from device interaction
+                ModMainDebug.debugLog(
+                    module = "CardReadViewModel",
+                    operation = "card_read_stop_error",
+                    data = mapOf("error" to (e.message ?: "Unknown error"))
+                )
+            } finally {
+                _isReading.value = false
+                _readingProgress.value = 0
+            }
+        }
+    }
     fun toggleAdvancedSettings() {
         _showAdvancedSettings.value = !_showAdvancedSettings.value
     }
@@ -253,8 +301,8 @@ class CardReadViewModel(
     fun refreshApduLogs() {
         viewModelScope.launch {
             try {
-                // Get latest 20 APDU entries from ModMainDebug
-                val entries = ModMainDebug.getLatestEntries(20)
+                // Get latest 50 APDU entries from ModMainDebug for detailed terminal display
+                val entries = ModMainDebug.getLatestEntries(50)
                 
                 // Format entries for display: "[MODULE] operation | data"
                 val formattedLogs = entries.map { entry ->
