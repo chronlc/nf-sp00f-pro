@@ -14,21 +14,25 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nfsp00fpro.app.modules.CardSession
 import com.nfsp00fpro.app.modules.ModMainDebug
-import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
 
 /**
  * CardReadScreen - Main entry point for MainActivity
- * Wraps RogueTerminalScreen to provide viewModel injection
+ * Creates ViewModel using factory pattern with context
  */
 @Composable
 fun CardReadScreen(moduleManager: Any? = null) {
-    val viewModel: CardReadViewModel = composeViewModel()
+    val context = LocalContext.current
+    val viewModel: CardReadViewModel = viewModel(
+        factory = CardReadViewModel.Factory(context)
+    )
     RogueTerminalScreen(viewModel = viewModel)
 }
 
