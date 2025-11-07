@@ -110,6 +110,16 @@ class CardReadViewModel(
     private val _isRocaVulnerable = MutableStateFlow(false)
     val isRocaVulnerable: StateFlow<Boolean> = _isRocaVulnerable.asStateFlow()
 
+    // Card Read Statistics for RoGuE TeRMiNaL
+    data class CardReadStats(
+        val cardsScanned: Int = 0,
+        val apduCount: Int = 0,
+        val tagsCount: Int = 0
+    )
+    
+    private val _cardReadStats = MutableStateFlow(CardReadStats())
+    val cardReadStats: StateFlow<CardReadStats> = _cardReadStats.asStateFlow()
+
     init {
         // Initialize EMV reader module with real device access
         emvReader.initialize()
@@ -408,6 +418,44 @@ class CardReadViewModel(
                 ModMainDebug.debugLog(
                     module = "CardReadViewModel",
                     operation = "apdu_logs_error",
+                    data = mapOf("error" to (e.message ?: "Unknown error"))
+                )
+            }
+        }
+    }
+
+    /**
+     * Get card read statistics from database
+     * Data source: Direct counts from CardSession, ApduLog, and TlvTag tables
+     * Called periodically or on demand for RoGuE TeRMiNaL stats display
+     */
+    fun refreshCardReadStats() {
+        viewModelScope.launch {
+            try {
+                val cardsCount = emvDatabase.getSessionCount() // Count total CardSession records
+                val apduCount = emvDatabase.getApduLogCount()  // Count total ApduLog records
+                val tagsCount = emvDatabase.getTlvTagCount()   // Count total TlvTag records
+                
+                _cardReadStats.value = CardReadStats(
+                    cardsScanned = cardsCount,
+                    apduCount = apduCount,
+                    tagsCount = tagsCount
+                )
+                
+                ModMainDebug.debugLog(
+                    module = "CardReadViewModel",
+                    operation = "stats_refreshed",
+                    data = mapOf(
+                        "cards" to cardsCount.toString(),
+                        "apdus" to apduCount.toString(),
+                        "tags" to tagsCount.toString()
+                    )
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+                ModMainDebug.debugLog(
+                    module = "CardReadViewModel",
+                    operation = "stats_error",
                     data = mapOf("error" to (e.message ?: "Unknown error"))
                 )
             }

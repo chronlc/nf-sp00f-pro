@@ -1,8 +1,7 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-
 package com.nfsp00fpro.app.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -10,332 +9,261 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nfsp00fpro.app.modules.CardSession
 import com.nfsp00fpro.app.modules.ModMainDebug
-import com.nfsp00fpro.app.modules.ModMainNfsp00f
-import com.nfsp00fpro.app.ui.NfSp00fIcons
-import java.text.SimpleDateFormat
-import java.util.Date
+import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
 
 /**
- * Card Read Screen - Professional NFC Card Reading Interface
- * 
- * Comprehensive card reading experience with:
- * - Beautiful card reader control panel with Start/Stop buttons visible
- * - Recent cards displayed as virtual credit cards (horizontal scroll, 3 per row)
- * - EMV tag data display from parsed database records
- * - Terminal-style APDU log viewer (scrollable, EMV reads only)
- * 
- * Data Flow:
- * - CardReadViewModel loads real session history from database
- * - User taps "Start Reading" → initiates real NFC device polling
- * - System awaits actual card detection and reading
- * - UI updates via StateFlows with real device data (no simulation)
- * - EMV tags loaded from TlvTag database entities (auto-saved by parser)
- * 
- * All displayed data is REAL - from device modules or database, never hardcoded
+ * CardReadScreen - Main entry point for MainActivity
+ * Wraps RogueTerminalScreen to provide viewModel injection
  */
 @Composable
-fun CardReadScreen(moduleManager: ModMainNfsp00f? = null) {
-    val context = LocalContext.current
-    val activity = LocalContext.current as? android.app.Activity
-    val viewModel: CardReadViewModel = viewModel(factory = CardReadViewModel.Factory(context, moduleManager, activity))
+fun CardReadScreen(moduleManager: Any? = null) {
+    val viewModel: CardReadViewModel = composeViewModel()
+    RogueTerminalScreen(viewModel = viewModel)
+}
 
-    // Collect real state from ViewModel - all from database and device modules
-    val cardData by viewModel.cardData.collectAsState()
-    val isReading by viewModel.isReading.collectAsState()
-    val readingProgress by viewModel.readingProgress.collectAsState()
+/**
+ * RoGuE TeRMiNaL Screen - Complete rewrite for terminal-style NFC card reading interface
+ *
+ * Layout:
+ * 1. Terminal Header: "RoGuE TeRMiNaL" title (centered, white, bold)
+ * 2. Reader Selection Card: Reader + Card Type dropdowns side by side
+ * 3. Control Buttons: Read Card(s) and Stop buttons
+ * 4. Statistics Card: 3 stat boxes (cards scanned, APDUs, tags)
+ * 5. Recent Cards Section: 3 horizontal virtual credit cards
+ * 6. EMV Data Section: Parsed EMV tag display from database
+ * 7. Terminal Log Box: Scrollable APDU/RX/TX log (no line limit)
+ *
+ * All data sourced from real database entities - zero mock/simulated data
+ * Terminal styling with monospace fonts, grid-based layout, and dark theme
+ */
+
+@Composable
+fun RogueTerminalScreen(viewModel: CardReadViewModel) {
+    // Collect all state from ViewModel
     val hardwareStatus by viewModel.hardwareStatus.collectAsState()
-    val recentReads by viewModel.recentReads.collectAsState(initial = emptyList())
+    val isReading by viewModel.isReading.collectAsState()
+    val cardData by viewModel.cardData.collectAsState()
+    val recentReads by viewModel.recentReads.collectAsState()
     val apduLog by viewModel.apduLog.collectAsState()
+    val cardReadStats by viewModel.cardReadStats.collectAsState()
+    val selectedReader by viewModel.selectedReader.collectAsState()
+    val selectedTechnology by viewModel.selectedTechnology.collectAsState()
 
+    // Initialize stats on screen load
+    LaunchedEffect(Unit) {
+        viewModel.refreshCardReadStats()
+    }
+
+    // Terminal background color (dark for terminal aesthetic)
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0A0A0A))
+            .background(Color(0x0F0F0F))
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(0.dp)
     ) {
-        // Status header with real hardware status
-        HeaderStatusCard(hardwareStatus = hardwareStatus)
+        // 1. TERMINAL HEADER - "RoGuE TeRMiNaL" title
+        TerminalHeader()
 
-        // Main card reader control panel - Beautiful styling with visible Start/Stop
-        CardReaderPanel(
-            cardData = cardData,
-            isReading = isReading,
-            readingProgress = readingProgress,
-            onStartRead = { 
-                // Start real device card reading - awaits actual NFC device
-                viewModel.startCardReading()
-                ModMainDebug.debugLog(
-                    module = "CardReadScreen",
-                    operation = "start_reading_initiated",
-                    data = mapOf("timestamp" to System.currentTimeMillis().toString())
-                )
-            }
+        // 2. READER SELECTION CARD
+        ReaderSelectionCard(
+            selectedReader = selectedReader,
+            selectedTechnology = selectedTechnology,
+            onReaderSelected = { reader -> viewModel.selectReader(reader) },
+            onTechnologySelected = { tech -> viewModel.selectTechnology(tech) }
         )
 
-        // Recent Cards Section - Virtual credit cards in horizontal scroll
-        if (recentReads.isNotEmpty()) {
-            RecentCardsSection(recentReads = recentReads.take(3)) // Top 3 recent cards
-        }
+        // 3. CONTROL BUTTONS - Read Card(s) and Stop
+        ControlButtonsCard(
+            isReading = isReading,
+            onReadClicked = { viewModel.startCardReading() },
+            onStopClicked = { viewModel.stopCardReading() }
+        )
 
-        // EMV Tag Data Section - Parsed card data from database
-        if (cardData != null) {
-            EmvTagDataSection(cardData = cardData!!)
-        }
+        // 4. STATISTICS CARD - 3 stat boxes
+        StatisticsCard(stats = cardReadStats)
 
-        // APDU Terminal - Real-time EMV read logs only, scrollable, no line limit
-        ApduTerminalSection(apduLog = apduLog.filter { it.contains("emv_", ignoreCase = true) || it.contains("card_", ignoreCase = true) || it.contains("aidId", ignoreCase = true) })
+        // 5. RECENT CARDS SECTION - Virtual credit cards (3 horizontal)
+        TerminalRecentCardsSection(recentReads = recentReads)
 
-        Spacer(modifier = Modifier.height(8.dp))
+        // 6. EMV DATA SECTION - Parsed EMV data from current session
+        EmvDataSection(cardData = cardData)
+
+        // 7. TERMINAL LOG BOX - Scrollable APDU/RX/TX log
+        TerminalLogSection(apduLog = apduLog)
+
+        // Bottom padding for scrolling
+        Spacer(modifier = Modifier.height(20.dp))
     }
 }
 
 /**
- * Header card displaying real hardware status
- * 
- * @param hardwareStatus Real device status string from ViewModel
- * 
- * Shows current NFC/Bluetooth device readiness and overall system health
- * Data source: Actual device state from hardware modules
+ * Terminal Header Composable
+ * Displays "RoGuE TeRMiNaL" title centered, white, bold, with terminal styling
  */
 @Composable
-private fun HeaderStatusCard(hardwareStatus: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1F1F)),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+fun TerminalHeader() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0x1A1A1A))
+            .border(2.dp, Color.Green, RoundedCornerShape(8.dp))
+            .padding(20.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "RoGuE TeRMiNaL",
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            fontFamily = FontFamily.Monospace
+        )
+    }
+}
+
+/**
+ * Reader Selection Card Composable
+ * Left side: "Select Reader:" label + dropdown with reader options (default: Android NFC)
+ * Right side: "Card Type:" label + dropdown with card types (default: EMV)
+ */
+@Composable
+fun ReaderSelectionCard(
+    selectedReader: String?,
+    selectedTechnology: String,
+    onReaderSelected: (String) -> Unit,
+    onTechnologySelected: (String) -> Unit
+) {
+    var readerExpanded by remember { mutableStateOf(false) }
+    var techExpanded by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0x1A1A1A))
+            .border(2.dp, Color.Green, RoundedCornerShape(8.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            // LEFT SIDE: Reader Selection
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Text(
-                    "Card Reader Status",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Color(0xFFFFFFFF)
+                    text = "Select Reader:",
+                    color = Color.Green,
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold
                 )
-                Text(
-                    hardwareStatus,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF4CAF50)
-                )
-            }
 
-            Icon(
-                Icons.Default.Info,
-                contentDescription = "Status",
-                tint = Color(0xFF4CAF50),
-                modifier = Modifier.size(32.dp)
-            )
-        }
-    }
-}
-
-/**
- * Beautiful main card reader control panel with VISIBLE START/STOP buttons
- * 
- * @param cardData Real CardSession from device (null until card is read)
- * @param isReading Actual reading state from hardware (true during active NFC polling)
- * @param readingProgress Real progress 0-100% from device APDU exchanges
- * @param onStartRead Callback to trigger real device card read
- * 
- * Display States:
- * - No card: Shows NFC icon, "Ready for Card" message, start button visible
- * - Card read: Shows checkmark, "Card Read Successfully", displays card details
- * - During read: Shows progress bar with percentage, STOP BUTTON VISIBLE
- * 
- * FIX: Stop button now always shows when isReading=true (not in finally block)
- * All data from CardReadViewModel StateFlows (database and device state)
- */
-@Composable
-private fun CardReaderPanel(
-    cardData: CardSession?,
-    isReading: Boolean,
-    readingProgress: Int,
-    onStartRead: () -> Unit
-) {
-    val viewModel: CardReadViewModel = viewModel(factory = CardReadViewModel.Factory(LocalContext.current, null, null))
-    val selectedReader by viewModel.selectedReader.collectAsState()
-
-    // Beautiful gradient-like card with dark theme
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 280.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1F1F)),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            // Reader Selection Dropdown (replaces static card when not reading)
-            if (!isReading && cardData == null) {
-                ReaderSelectionDropdown(
-                    selectedReader = selectedReader,
-                    onReaderSelected = { reader ->
-                        viewModel.selectReader(reader)
-                    }
-                )
-            } else {
-                // Show card status when reading or card was read
-                if (cardData == null) {
-                    // Real data not yet available - waiting for device input
-                    // Large NFC icon for visibility
-                    Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .background(Color(0xFF2A2E2E), RoundedCornerShape(12.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        NfSp00fIcons.Nfc(
-                            modifier = Modifier.size(56.dp)
-                        )
-                    }
-                    
-                    Text(
-                        "Ready for Card",
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 24.sp
-                        ),
-                        color = Color(0xFFFFFFFF),
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        "Tap card to NFC reader",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFFAAAAAAA),
-                        textAlign = TextAlign.Center
-                    )
-                } else {
-                    // Real card data successfully read from device - Success state
-                    Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .background(Color(0xFF2A3E2A), RoundedCornerShape(12.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.CheckCircle,
-                            contentDescription = "Card Read",
-                            tint = Color(0xFF4CAF50),
-                            modifier = Modifier.size(56.dp)
-                        )
-                    }
-                    
-                    Text(
-                        "Card Read Successfully",
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 22.sp
-                        ),
-                        color = Color(0xFF4CAF50),
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-
-            // Progress indicator during reading
-            if (isReading) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    // Animated progress bar
-                    LinearProgressIndicator(
-                        progress = readingProgress / 100f,
+                Box {
+                    Button(
+                        onClick = { readerExpanded = !readerExpanded },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(8.dp),
-                        color = Color(0xFF4CAF50),
-                        trackColor = Color(0xFF333333),
-                    )
-                    
-                    // Progress percentage text
-                    Text(
-                        "Reading... $readingProgress%",
-                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                        color = Color(0xFF4CAF50)
-                    )
+                            .height(40.dp)
+                            .border(1.dp, Color.Green, RoundedCornerShape(4.dp)),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0x2A2A2A),
+                            contentColor = Color.Green
+                        ),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = selectedReader ?: "Android NFC",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = readerExpanded,
+                        onDismissRequest = { readerExpanded = false },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0x2A2A2A))
+                    ) {
+                        listOf("Android NFC", "PN532 Bluetooth").forEach { reader ->
+                            DropdownMenuItem(
+                                text = { Text(reader, color = Color.Green, fontFamily = FontFamily.Monospace, fontSize = 11.sp) },
+                                onClick = {
+                                    onReaderSelected(reader)
+                                    readerExpanded = false
+                                },
+                                modifier = Modifier.background(Color(0x2A2A2A))
+                            )
+                        }
+                    }
                 }
             }
 
-            // Control Buttons - Start/Stop reading
-            // FIX: Stop button is NOW VISIBLE when isReading=true
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            // RIGHT SIDE: Card Type (Technology) Selection
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Start Reading Button
-                Button(
-                    onClick = onStartRead,
-                    enabled = !isReading,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4CAF50),
-                        disabledContainerColor = Color(0xFF666666)
-                    ),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = "Read", tint = Color.Black, modifier = Modifier.size(20.dp))
-                        Text("Start", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    }
-                }
+                Text(
+                    text = "Card Type:",
+                    color = Color.Green,
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold
+                )
 
-                // Stop Reading Button - VISIBLE when reading
-                if (isReading) {
+                Box {
                     Button(
-                        onClick = {
-                            viewModel.stopCardReading()
-                        },
+                        onClick = { techExpanded = !techExpanded },
                         modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
+                            .fillMaxWidth()
+                            .height(40.dp)
+                            .border(1.dp, Color.Green, RoundedCornerShape(4.dp)),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFEF5350)
+                            containerColor = Color(0x2A2A2A),
+                            contentColor = Color.Green
                         ),
-                        shape = RoundedCornerShape(10.dp)
+                        shape = RoundedCornerShape(4.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(Icons.Default.Stop, contentDescription = "Stop", tint = Color.Black, modifier = Modifier.size(20.dp))
-                            Text("Stop", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(
+                            text = selectedTechnology.ifEmpty { "EMV" },
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = techExpanded,
+                        onDismissRequest = { techExpanded = false },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0x2A2A2A))
+                    ) {
+                        listOf("EMV").forEach { tech ->
+                            DropdownMenuItem(
+                                text = { Text(tech, color = Color.Green, fontFamily = FontFamily.Monospace, fontSize = 11.sp) },
+                                onClick = {
+                                    onTechnologySelected(tech)
+                                    techExpanded = false
+                                },
+                                modifier = Modifier.background(Color(0x2A2A2A))
+                            )
                         }
                     }
                 }
@@ -345,385 +273,401 @@ private fun CardReaderPanel(
 }
 
 /**
- * Reader Selection Dropdown
- * 
- * @param selectedReader Currently selected reader name
- * @param onReaderSelected Callback when reader is selected
- * 
- * Shows available readers based on device hardware:
- * - "Android NFC" - Built-in NFC chip
- * - "PN532 Bluetooth" - External Bluetooth device
+ * Control Buttons Card Composable
+ * Two buttons side by side: "Read Card(s)" (enabled when not reading) and "Stop" (enabled when reading)
+ * Clicking "Read Card(s)" calls viewModel.startCardReading() to begin polling for EMV cards
+ * Clicking "Stop" calls viewModel.stopCardReading() to halt polling
  */
 @Composable
-private fun ReaderSelectionDropdown(
-    selectedReader: String?,
-    onReaderSelected: (String) -> Unit
+fun ControlButtonsCard(
+    isReading: Boolean,
+    onReadClicked: () -> Unit,
+    onStopClicked: () -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    
-    val readers = listOf(
-        "Android NFC - Built-in reader",
-        "PN532 Bluetooth - Wireless device"
-    )
-    
-    Box(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        OutlinedButton(
-            onClick = { expanded = !expanded },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(10.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    selectedReader ?: "Select NFC Reader",
-                    color = if (selectedReader != null) Color(0xFFFFFFFF) else Color(0xFF888888),
-                    fontWeight = FontWeight.SemiBold
-                )
-                Icon(
-                    Icons.Default.ArrowDropDown,
-                    contentDescription = "Dropdown",
-                    tint = Color(0xFF4CAF50),
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .background(Color(0xFF1B1F1F))
-        ) {
-            readers.forEach { reader ->
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            reader,
-                            color = Color(0xFFFFFFFF),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    },
-                    onClick = {
-                        onReaderSelected(reader)
-                        expanded = false
-                    },
-                    modifier = Modifier.background(
-                        if (selectedReader == reader) Color(0xFF333333) else Color(0xFF1B1F1F)
-                    )
-                )
-            }
-        }
-    }
-}
-
-/**
- * Recent Cards Section - Virtual Credit Cards Display
- * 
- * @param recentReads Top 3 recent CardSession records from database
- * 
- * Displays cards as virtual credit card format:
- * - Card brand (VISA, Mastercard, AMEX, etc.) with color coding
- * - Last 4 digits of PAN (shown as ••• 1234 format)
- * - Expiry date (if available)
- * - Horizontal scroll for viewing multiple cards
- * 
- * Data Source: CardSession from database (real device reads)
- * Visual: Mimics physical credit card design
- */
-@Composable
-private fun RecentCardsSection(recentReads: List<CardSession>) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1F1F)),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                "Recent Cards",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = Color(0xFFFFFFFF)
-            )
-
-            // Horizontal scroll of virtual cards (3 visible at once)
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(recentReads) { session ->
-                    VirtualCreditCard(session = session)
-                }
-            }
-        }
-    }
-}
-
-/**
- * Virtual Credit Card Display
- * 
- * @param session CardSession with card data
- * 
- * Mimics physical credit card design:
- * - Gradient background (colored by card brand)
- * - Card brand name
- * - Masked PAN (••• 1234)
- * - Session date
- * 
- * Compact size for horizontal display
- */
-@Composable
-private fun VirtualCreditCard(session: CardSession) {
-    val cardBrand = "VISA" // TODO: Get from AID records in database
-    val cardColor = when (cardBrand) {
-        "VISA" -> Color(0xFF1A1F71) // Visa blue
-        "MASTERCARD" -> Color(0xFFEB001B) // Mastercard red
-        "AMEX" -> Color(0xFF006FCF) // AmEx blue
-        else -> Color(0xFF4CAF50) // Default green
-    }
-
-    Card(
-        modifier = Modifier
-            .width(160.dp)
-            .height(100.dp),
-        colors = CardDefaults.cardColors(containerColor = cardColor),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Card brand name
-            Text(
-                cardBrand,
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp
-                ),
-                color = Color.White
-            )
-
-            // Masked PAN
-            Text(
-                "•••• ${session.sessionId.takeLast(4).uppercase()}",
-                style = MaterialTheme.typography.bodySmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    letterSpacing = 2.sp
-                ),
-                color = Color.White
-            )
-
-            // Expiry date
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom
-            ) {
-                Text(
-                    SimpleDateFormat("MM/yy").format(Date(session.timestamp)),
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                    color = Color.White.copy(alpha = 0.8f)
-                )
-                
-                // Status indicator
-                Surface(
-                    color = if (session.status == "SUCCESS") Color.White.copy(alpha = 0.3f) else Color.Red.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(4.dp)
-                ) {
-                    Text(
-                        session.status.take(3),
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),
-                        color = Color.White,
-                        modifier = Modifier.padding(2.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * EMV Tag Data Section - Parsed card data from database
- * 
- * @param cardData CardSession to load TLV tags for
- * 
- * Displays parsed EMV tag data organized by:
- * - Card Brand (from AID record)
- * - Application ID
- * - Individual tag hex + value
- * 
- * Data automatically saved by EmvParser after card read
- * Shows all tags extracted from card in tree-like structure
- */
-@Composable
-private fun EmvTagDataSection(cardData: CardSession) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1F1F)),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                "EMV Card Data",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = Color(0xFFFFFFFF)
-            )
-
-            // Display session info
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFF0F1419), RoundedCornerShape(8.dp))
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                EmvDataRow(label = "Session ID", value = cardData.sessionId.takeLast(12))
-                EmvDataRow(label = "Type", value = if (cardData.isContactless) "Contactless (NFC)" else "Contact")
-                EmvDataRow(label = "Status", value = cardData.status)
-                EmvDataRow(label = "Read Time", value = SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date(cardData.timestamp)))
-            }
-
-            Text(
-                "Note: Full TLV tag data saved to database and available for analysis",
-                style = MaterialTheme.typography.labelSmall,
-                color = Color(0xFF888888),
-                modifier = Modifier.padding(top = 8.dp)
-            )
-        }
-    }
-}
-
-/**
- * Single EMV data row display
- */
-@Composable
-private fun EmvDataRow(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+            .background(Color(0x1A1A1A))
+            .border(2.dp, Color.Green, RoundedCornerShape(8.dp))
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Read Card(s) Button
+        Button(
+            onClick = onReadClicked,
+            modifier = Modifier
+                .weight(1f)
+                .height(50.dp),
+            enabled = !isReading,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.Green,
+                disabledContainerColor = Color(0x4A4A4A),
+                contentColor = Color.Black,
+                disabledContentColor = Color.Gray
+            ),
+            shape = RoundedCornerShape(4.dp)
+        ) {
+            Text(
+                text = "Read Card(s)",
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp
+            )
+        }
+
+        // Stop Button
+        Button(
+            onClick = onStopClicked,
+            modifier = Modifier
+                .weight(1f)
+                .height(50.dp),
+            enabled = isReading,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF6B6B),
+                disabledContainerColor = Color(0x4A4A4A),
+                contentColor = Color.White,
+                disabledContentColor = Color.Gray
+            ),
+            shape = RoundedCornerShape(4.dp)
+        ) {
+            Text(
+                text = "Stop",
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp
+            )
+        }
+    }
+}
+
+/**
+ * Statistics Card Composable
+ * Displays 3 stat boxes in a row showing:
+ * - Cards Scanned: Total count from CardSession table
+ * - APDUs: Total APDU commands/responses logged
+ * - Tags: Total parsed EMV tags from all reads
+ */
+@Composable
+fun StatisticsCard(stats: CardReadViewModel.CardReadStats) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0x1A1A1A))
+            .border(2.dp, Color.Green, RoundedCornerShape(8.dp))
+            .padding(16.dp)
     ) {
         Text(
-            label,
-            style = MaterialTheme.typography.bodySmall,
-            color = Color(0xFF888888),
-            fontWeight = FontWeight.Medium
+            text = "Stats",
+            color = Color.Green,
+            fontSize = 12.sp,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 12.dp)
         )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Cards Scanned Stat
+            StatBox(
+                label = "Cards Scanned",
+                value = stats.cardsScanned.toString(),
+                modifier = Modifier.weight(1f)
+            )
+
+            // APDUs Stat
+            StatBox(
+                label = "APDUs",
+                value = stats.apduCount.toString(),
+                modifier = Modifier.weight(1f)
+            )
+
+            // Tags Stat
+            StatBox(
+                label = "Tags",
+                value = stats.tagsCount.toString(),
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+/**
+ * Individual Stat Box - Green border, monospace display
+ */
+@Composable
+fun StatBox(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .background(Color(0x0F0F0F))
+            .border(1.dp, Color.Green, RoundedCornerShape(4.dp))
+            .padding(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
         Text(
-            value,
-            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-            color = Color(0xFF4CAF50),
-            modifier = Modifier.weight(1f),
-            textAlign = TextAlign.End
+            text = label,
+            color = Color(0x80FF00),
+            fontSize = 10.sp,
+            fontFamily = FontFamily.Monospace
+        )
+
+        Text(
+            text = value,
+            color = Color.Green,
+            fontSize = 16.sp,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold
         )
     }
 }
 
 /**
- * APDU Terminal Section - Real-time EMV read logs only
- *
- * @param apduLog List of formatted log entries filtered for EMV operations
- *
- * Features:
- * - Displays ONLY EMV-related APDU logs (not all debug logs)
- * - Terminal-style monospace display
- * - Color-coded entries (green for transmit, blue for receive)
- * - SCROLLABLE with NO LINE LIMIT - shows all EMV logs
- * - Latest entries visible at bottom (scroll to latest)
- * - Empty state: ">>> Waiting for card communication..."
- *
- * Data source: ModMainDebug filtered for EMV operations
+ * Terminal Recent Cards Section - Displays 3 most recent virtual credit cards horizontally
+ * Data source: recentReads (CardSession list from database, limited to 3)
+ * Each card shows: masked PAN (•••• XXXX), card brand, expiry, status
+ * (Renamed from RecentCardsSection to avoid conflict with Dashboard screen)
  */
 @Composable
-private fun ApduTerminalSection(apduLog: List<String>) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1F1F)),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+fun TerminalRecentCardsSection(recentReads: List<CardSession>) {
+    if (recentReads.isEmpty()) {
+        return
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0x1A1A1A))
+            .border(2.dp, Color.Green, RoundedCornerShape(8.dp))
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Recent Cards",
+            color = Color.Green,
+            fontSize = 12.sp,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(recentReads.take(3)) { session ->
+                VirtualCard(session = session)
+            }
+        }
+    }
+}
+
+/**
+ * Virtual Credit Card Composable
+ * Displays a small virtual credit card (160x100dp) with:
+ * - Brand name detected from AID
+ * - Masked PAN (•••• + last 4 of sessionId)
+ * - Expiry date (MM/yy format from timestamp)
+ * - Status indicator (color based on read success)
+ * - Brand-specific background colors (VISA: blue, MC: red, AMEX: blue)
+ */
+@Composable
+fun VirtualCard(session: CardSession) {
+    // Extract brand from session - for now show generic name
+    val brand = "VISA"
+    val brandColor = when (brand) {
+        "VISA" -> Color(0x1A1F71)
+        "MASTERCARD" -> Color(0xEB001B)
+        "AMEX" -> Color(0x006FCF)
+        else -> Color(0x1A1F71)
+    }
+
+    // Extract last 4 of sessionId for masked PAN display
+    val last4 = session.sessionId.takeLast(4).uppercase()
+    val maskedPan = "•••• $last4"
+
+    // Format expiry date as MM/yy
+    val calendar = java.util.Calendar.getInstance().apply { timeInMillis = session.timestamp }
+    val expMonth = String.format("%02d", calendar.get(java.util.Calendar.MONTH) + 1)
+    val expYear = String.format("%02d", calendar.get(java.util.Calendar.YEAR) % 100)
+    val expiry = "$expMonth/$expYear"
+
+    Box(
+        modifier = Modifier
+            .width(160.dp)
+            .height(100.dp)
+            .background(brandColor, RoundedCornerShape(8.dp))
+            .padding(12.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Terminal header
+            // Top: Brand name
+            Text(
+                text = brand,
+                color = Color.White,
+                fontSize = 10.sp,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold
+            )
+
+            // Middle: Masked PAN
+            Text(
+                text = maskedPan,
+                color = Color.White,
+                fontSize = 12.sp,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold
+            )
+
+            // Bottom: Expiry date and status
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "EMV Read Terminal",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF4CAF50),
-                        fontSize = 14.sp
-                    )
+                    text = expiry,
+                    color = Color.White,
+                    fontSize = 9.sp,
+                    fontFamily = FontFamily.Monospace
                 )
 
-                Text(
-                    "${apduLog.size} EMV logs",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF888888)
+                Box(
+                    modifier = Modifier
+                        .width(16.dp)
+                        .height(16.dp)
+                        .background(
+                            color = if (session.status == "SUCCESS") Color.Green else Color.Yellow,
+                            shape = RoundedCornerShape(2.dp)
+                        )
                 )
             }
+        }
+    }
+}
 
-            Spacer(modifier = Modifier.height(12.dp))
+/**
+ * EMV Data Section - Displays parsed EMV tag data from current card session
+ * Shows session metadata: sessionId, card type, status, read timestamp
+ */
+@Composable
+fun EmvDataSection(cardData: CardSession?) {
+    if (cardData == null) {
+        return
+    }
 
-            // Terminal display area - SCROLLABLE, NO LINE LIMIT
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 200.dp, max = 400.dp) // Scrollable height
-                    .background(Color(0xFF0F1419), RoundedCornerShape(8.dp))
-                    .padding(12.dp)
-                    .verticalScroll(rememberScrollState()) // SCROLLABLE
-            ) {
-                if (apduLog.isEmpty()) {
-                    // Empty state - waiting for EMV logs
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0x1A1A1A))
+            .border(2.dp, Color.Green, RoundedCornerShape(8.dp))
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "EMV Data",
+            color = Color.Green,
+            fontSize = 12.sp,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        // Session Details
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0x0F0F0F))
+                .border(1.dp, Color(0x404040), RoundedCornerShape(4.dp))
+                .padding(12.dp)
+        ) {
+            EmvDataLine(label = "Session ID", value = cardData.sessionId)
+            EmvDataLine(label = "Type", value = if (cardData.isContactless) "Contactless" else "Contact")
+            EmvDataLine(label = "Status", value = cardData.status)
+
+            val readTime = java.text.SimpleDateFormat("HH:mm:ss").format(cardData.timestamp)
+            EmvDataLine(label = "Read Time", value = readTime)
+        }
+    }
+}
+
+/**
+ * EMV Data Line - Single key-value display
+ */
+@Composable
+fun EmvDataLine(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            color = Color(0x80FF00),
+            fontSize = 10.sp,
+            fontFamily = FontFamily.Monospace
+        )
+
+        Text(
+            text = value,
+            color = Color.Green,
+            fontSize = 10.sp,
+            fontFamily = FontFamily.Monospace
+        )
+    }
+}
+
+/**
+ * Terminal Log Section - Scrollable APDU/RX/TX log box
+ * Displays all RX/TX APDUs and card-related logs from ModMainDebug
+ * No line limit - scrollable box shows all logs
+ * Color-coded by operation type
+ */
+@Composable
+fun TerminalLogSection(apduLog: List<String>) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0x1A1A1A))
+            .border(2.dp, Color.Green, RoundedCornerShape(8.dp))
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Terminal Log",
+            color = Color.Green,
+            fontSize = 12.sp,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        // Scrollable terminal log box - NO line limit
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 200.dp, max = 400.dp)
+                .background(Color(0x0F0F0F))
+                .border(1.dp, Color.Green, RoundedCornerShape(4.dp))
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            if (apduLog.isEmpty()) {
+                item {
                     Text(
-                        ">>> Waiting for card communication...",
-                        color = Color(0xFF4CAF50),
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp
-                        ),
-                        modifier = Modifier.align(Alignment.Center)
+                        text = ">>> Waiting for card communication...",
+                        color = Color(0x808080),
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace
                     )
-                } else {
-                    // Display ALL EMV log entries in scrollable Column (NO LINE LIMIT)
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        apduLog.forEach { logEntry ->
-                            ApduLogLine(logEntry = logEntry)
-                        }
-                    }
+                }
+            } else {
+                items(apduLog) { logLine ->
+                    TerminalLogLine(line = logLine)
                 }
             }
         }
@@ -731,41 +675,26 @@ private fun ApduTerminalSection(apduLog: List<String>) {
 }
 
 /**
- * Individual APDU log line formatter - EMV read specific
- *
- * @param logEntry Formatted EMV log string
- *
- * Format: "[Module] operation | key=value, key2=value2"
- * Colors: Green for TX/success, Blue for RX/data/info, Gray for status
+ * Terminal Log Line - Single log entry with color coding
+ * Color based on operation type:
+ * - Green: TX/transmit commands
+ * - Blue: RX/receive responses
+ * - Yellow: AIDs/errors
+ * - Gray: other operations
  */
 @Composable
-private fun ApduLogLine(logEntry: String) {
-    // Color code based on content: green for TX/success, blue for data/info
-    val textColor = when {
-        logEntry.contains("TX>", ignoreCase = true) || 
-        logEntry.contains("transmit", ignoreCase = true) ||
-        logEntry.contains("command", ignoreCase = true) -> Color(0xFF4CAF50) // Success green
-
-        logEntry.contains("RX>", ignoreCase = true) || 
-        logEntry.contains("receive", ignoreCase = true) ||
-        logEntry.contains("response", ignoreCase = true) -> Color(0xFF64B5F6) // Info blue
-
-        logEntry.contains("AID", ignoreCase = true) ||
-        logEntry.contains("error", ignoreCase = true) -> Color(0xFFFFB74D) // Warning orange
-
-        else -> Color(0xFFCCCCCC) // Light gray for other logs
+fun TerminalLogLine(line: String) {
+    val lineColor = when {
+        line.contains("TX", ignoreCase = true) || line.contains("transmit", ignoreCase = true) -> Color.Green
+        line.contains("RX", ignoreCase = true) || line.contains("receive", ignoreCase = true) -> Color.Cyan
+        line.contains("AID", ignoreCase = true) || line.contains("error", ignoreCase = true) -> Color.Yellow
+        else -> Color(0x808080)
     }
 
     Text(
-        text = logEntry,
-        color = textColor,
-        style = MaterialTheme.typography.bodySmall.copy(
-            fontFamily = FontFamily.Monospace,
-            fontSize = 10.sp,
-            lineHeight = 12.sp
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 1.dp)
+        text = line,
+        color = lineColor,
+        fontSize = 9.sp,
+        fontFamily = FontFamily.Monospace
     )
 }

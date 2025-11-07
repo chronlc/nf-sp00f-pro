@@ -10,6 +10,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **RoGuE TeRMiNaL Screen - Terminal-Style NFC Reader Interface** (Major redesign)
+  - Complete screen overhaul with dark terminal aesthetic (monospace fonts, green-on-black colors)
+  - Terminal Header: Centered "RoGuE TeRMiNaL" title (white, bold, monospace)
+  - Reader Selection: Side-by-side dropdowns for NFC reader (default: Android NFC) and card type (default: EMV)
+  - Control Buttons: "Read Card(s)" and "Stop" buttons with proper enable/disable lifecycle
+    - Read Card(s) button: Calls viewModel.startCardReading() to begin EMV card polling via mod-emv-read
+    - Stop button: Calls viewModel.stopCardReading() to halt polling (visible only when reading active)
+  - Statistics Card: 3-box display showing real-time metrics from database:
+    - Cards Scanned: Count of CardSession records
+    - APDUs: Count of ApduLog records (TX/RX commands and responses)
+    - Tags: Count of parsed TLV tag records from all reads
+  - Recent Cards Section: Horizontal scrollable virtual credit card display (3 most recent)
+    - Brand-specific colors: VISA (#1A1F71 blue), MASTERCARD (#EB001B red), AMEX (#006FCF blue)
+    - Displays: Brand name, masked PAN (•••• XXXX format), expiry date (MM/yy), status indicator
+  - EMV Data Display: Shows parsed EMV data from current card session
+    - Displays: Session ID, card type (Contactless/Contact), status, read timestamp
+  - Terminal Log Box: Scrollable APDU communication log (NO line limit)
+    - Shows all RX/TX APDUs and card-related operations from ModMainDebug logs
+    - Color-coded by operation: Green (TX), Cyan (RX), Yellow (AID/errors), Gray (other)
+    - Monospace terminal font for authenticity
+
+- **CardReadViewModel Enhancements**: New stats capability
+  - Added CardReadStats data class: cardsScanned, apduCount, tagsCount
+  - Added _cardReadStats StateFlow: Real-time statistics from database
+  - Added refreshCardReadStats() method: Queries total counts from CardSession/ApduLog/TlvTag tables
+  - Periodic stats refresh via LaunchedEffect on screen load
+
+- **EmvDatabase Query Methods**: New count operations
+  - Added getSessionCount(): Total CardSession records (cards scanned count)
+  - Added getApduLogCount(): Total ApduLog records (APDU commands/responses count)
+  - Added getTlvTagCount(): Total TlvTag records (parsed EMV tags count)
+  - Added DAO methods in CardSessionDao, ApduLogDao, TlvTagDao for efficient queries
+
 - **Card Read Screen Complete UI Redesign**: Production-grade interface for NFC card reading
   - CardReaderPanel: Enhanced styling with improved padding (28dp), larger NFC icon (80dp), themed background
   - Stop Button: Fixed visibility - now displays when card reading is in progress

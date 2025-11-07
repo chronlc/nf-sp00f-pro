@@ -233,6 +233,9 @@ interface CardSessionDao {
     @Query("SELECT * FROM card_sessions ORDER BY timestamp DESC LIMIT :limit")
     suspend fun getRecentSessions(limit: Int = 50): List<CardSession>
 
+    @Query("SELECT COUNT(*) FROM card_sessions")
+    suspend fun getSessionCount(): Int
+
     @Delete
     suspend fun deleteSession(session: CardSession)
 
@@ -277,6 +280,9 @@ interface ApduLogDao {
 
     @Query("SELECT COUNT(*) FROM apdu_logs WHERE sessionId = :sessionId")
     suspend fun getLogCountForSession(sessionId: String): Int
+
+    @Query("SELECT COUNT(*) FROM apdu_logs")
+    suspend fun getApduLogCount(): Int
 }
 
 @Dao
@@ -301,6 +307,9 @@ interface TlvTagDao {
 
     @Query("SELECT COUNT(*) FROM tlv_tags WHERE sessionId = :sessionId")
     suspend fun getTagCountForSession(sessionId: String): Int
+
+    @Query("SELECT COUNT(*) FROM tlv_tags")
+    suspend fun getTlvTagCount(): Int
 }
 
 // ============================================================================
@@ -651,6 +660,33 @@ class EmvDatabase(private val context: Context) {
      */
     suspend fun getTlvTagCount(sessionId: String): Int {
         return tagDao.getTagCountForSession(sessionId)
+    }
+
+    /**
+     * Get total count of all card sessions scanned
+     * Data source: COUNT(*) from card_sessions table
+     * Used for RoGuE TeRMiNaL statistics display
+     */
+    suspend fun getSessionCount(): Int {
+        return sessionDao.getSessionCount()
+    }
+
+    /**
+     * Get total count of all APDU logs across all sessions
+     * Data source: COUNT(*) from apdu_logs table
+     * Used for RoGuE TeRMiNaL statistics display
+     */
+    suspend fun getApduLogCount(): Int {
+        return apduDao.getApduLogCount()
+    }
+
+    /**
+     * Get total count of all TLV tags across all sessions
+     * Data source: COUNT(*) from tlv_tags table
+     * Used for RoGuE TeRMiNaL statistics display
+     */
+    suspend fun getTlvTagCount(): Int {
+        return tagDao.getTlvTagCount()
     }
 
     // ========================================================================
